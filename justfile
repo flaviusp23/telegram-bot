@@ -17,19 +17,19 @@ activate:
 
 # Run the bot with integrated scheduler (uses ENVIRONMENT from .env)
 run:
-    source venv/bin/activate && python run_bot.py
+    source venv/bin/activate && ./venv/bin/python run_bot.py
 
 # Force development mode (overrides .env)
 dev:
-    source venv/bin/activate && ENVIRONMENT=DEV python run_bot.py
+    source venv/bin/activate && ENVIRONMENT=DEV ./venv/bin/python run_bot.py
 
 # Force production mode (overrides .env)
 prod:
-    source venv/bin/activate && ENVIRONMENT=PROD python run_bot.py
+    source venv/bin/activate && ENVIRONMENT=PROD ./venv/bin/python run_bot.py
 
 # Export data for a specific user
 export user_id days="30":
-    source venv/bin/activate && python run_export.py {{user_id}} --days {{days}}
+    source venv/bin/activate && ./venv/bin/python run_export.py {{user_id}} --days {{days}}
 
 # Run database migrations
 migrate:
@@ -72,7 +72,7 @@ freeze:
 
 # Run with environment variables from .env file
 run-env:
-    source venv/bin/activate && python run_bot.py
+    source venv/bin/activate && ./venv/bin/python run_bot.py
 
 # Quick restart (stop and start)
 restart: stop run

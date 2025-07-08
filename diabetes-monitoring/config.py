@@ -3,6 +3,11 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# Environment
+ENVIRONMENT = os.getenv('ENVIRONMENT', 'DEV').upper()  # DEV or PROD
+IS_PRODUCTION = ENVIRONMENT == 'PROD'
+IS_DEVELOPMENT = ENVIRONMENT == 'DEV'
+
 # Telegram
 BOT_TOKEN = os.getenv('BOT_TOKEN')
 

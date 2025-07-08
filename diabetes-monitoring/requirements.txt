@@ -1,16 +1,16 @@
 # Core
-python-telegram-bot==20.7
+python-telegram-bot==20.3
+APScheduler==3.10.4
 mysql-connector-python==8.2.0
 sqlalchemy==2.0.41
 alembic==1.16.2
-schedule==1.2.0
 cryptography==41.0.7
 python-dotenv==1.0.0
 
 # Data Export (Week 7)
-# pandas==2.2.0
-# matplotlib==3.8.2
-# lxml==5.1.0
+pandas==2.2.0
+matplotlib==3.8.2
+lxml==5.1.0
 
 # LLM (Week 8)
 # openai==1.6.1

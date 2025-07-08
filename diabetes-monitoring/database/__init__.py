@@ -4,12 +4,12 @@
 from database.database import get_db, SessionLocal, engine, Base
 from database.models import User, Response, AssistantInteraction, UserStatus
 from database.helpers import (
-    add_user,
+    create_user,
     get_user_by_telegram_id,
     get_active_users,
-    record_response,
+    create_response,
     get_user_responses,
-    record_assistant_interaction,
+    create_assistant_interaction,
     get_user_interactions
 )
 from database.constants import (
@@ -19,7 +19,16 @@ from database.constants import (
     DatabaseSettings,
     FieldLengths,
     DefaultValues,
-    TableNames
+    TableNames,
+    IndexNames,
+    ConstraintNames,
+    TimeConstants,
+    EncryptionConstants
+)
+from database.session_utils import (
+    db_session_context,
+    with_db_session,
+    get_db_for_request
 )
 
 __all__ = [
@@ -28,10 +37,13 @@ __all__ = [
     # Models
     'User', 'Response', 'AssistantInteraction', 'UserStatus',
     # Helpers
-    'add_user', 'get_user_by_telegram_id', 'get_active_users',
-    'record_response', 'get_user_responses',
-    'record_assistant_interaction', 'get_user_interactions',
+    'create_user', 'get_user_by_telegram_id', 'get_active_users',
+    'create_response', 'get_user_responses',
+    'create_assistant_interaction', 'get_user_interactions',
     # Constants
     'UserStatusValues', 'QuestionTypes', 'ResponseValues',
-    'DatabaseSettings', 'FieldLengths', 'DefaultValues', 'TableNames'
+    'DatabaseSettings', 'FieldLengths', 'DefaultValues', 'TableNames',
+    'IndexNames', 'ConstraintNames', 'TimeConstants', 'EncryptionConstants',
+    # Session utilities
+    'db_session_context', 'with_db_session', 'get_db_for_request'
 ]

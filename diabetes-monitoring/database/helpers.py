@@ -1,12 +1,25 @@
+"""Database helper functions with consistent naming conventions.
+
+Naming conventions:
+- Functions: snake_case with consistent verb prefixes:
+  - create_* for creating new records
+  - get_* for retrieving records
+  - update_* for modifying records
+  - delete_* for removing records
+- Variables: snake_case
+  - user (not user_obj, db_user, etc.)
+  - telegram_id (not telegramId)
+- Parameters: snake_case with descriptive names
+"""
 from sqlalchemy.orm import Session
 from database.models import User, Response, AssistantInteraction, UserStatus
 from database.constants import DefaultValues
 from datetime import datetime
 
 # User helper functions
-def add_user(db: Session, first_name: str, family_name: str, passport_id: str, 
-             phone_number: str, telegram_id: str, email: str) -> User:
-    """Add new user to database"""
+def create_user(db: Session, first_name: str, family_name: str, passport_id: str, 
+                phone_number: str, telegram_id: str, email: str) -> User:
+    """Create new user in database"""
     user = User(
         first_name=first_name,
         family_name=family_name,
@@ -36,8 +49,8 @@ def update_last_interaction(db: Session, user_id: int):
         db.commit()
 
 # Response helper functions
-def record_response(db: Session, user_id: int, question_type: str, response_value: str) -> Response:
-    """Record questionnaire response"""
+def create_response(db: Session, user_id: int, question_type: str, response_value: str) -> Response:
+    """Create questionnaire response in database"""
     response = Response(
         user_id=user_id,
         question_type=question_type,
@@ -61,8 +74,8 @@ def get_user_responses(db: Session, user_id: int, start_date: datetime, end_date
     ).order_by(Response.response_timestamp.desc()).all()
 
 # Assistant interaction helper functions
-def record_assistant_interaction(db: Session, user_id: int, prompt: str, response: str) -> AssistantInteraction:
-    """Record AI assistant interaction"""
+def create_assistant_interaction(db: Session, user_id: int, prompt: str, response: str) -> AssistantInteraction:
+    """Create AI assistant interaction in database"""
     interaction = AssistantInteraction(
         user_id=user_id,
         prompt=prompt,

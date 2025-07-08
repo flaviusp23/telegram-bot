@@ -70,6 +70,8 @@ just dev
 just prod
 ```
 
+**Note**: The application will automatically validate your environment variables on startup. If any required variables are missing, you'll see a detailed error message explaining what needs to be configured.
+
 ## 📱 User Guide (Telegram)
 
 ### Getting Started
@@ -115,28 +117,59 @@ Send `/export` to receive:
 
 ## 👨‍💻 Developer Guide
 
+### Architecture Benefits
+
+The recent refactoring brings several advantages:
+
+1. **Modularity**: Each component has a single responsibility
+2. **Maintainability**: Constants and configuration centralized
+3. **Testability**: Smaller functions are easier to test
+4. **Error Handling**: Consistent error handling patterns
+5. **Type Safety**: Type hints throughout the codebase
+6. **Code Reuse**: Decorators and utilities eliminate duplication
+
 ### Project Structure
 ```
 diabetes-monitoring/
 ├── bot/
-│   └── main.py          # Telegram bot with integrated APScheduler
+│   ├── __init__.py               # Bot module initialization
+│   ├── main.py                   # Telegram bot with integrated APScheduler
+│   ├── scheduler.py              # Scheduler configuration and jobs
+│   ├── decorators.py             # Consolidated decorators for commands
+│   ├── handlers/                 # Command handlers (modular structure)
+│   │   ├── __init__.py
+│   │   ├── auth.py              # Registration and authentication
+│   │   ├── export.py            # Data export functionality
+│   │   ├── questionnaire.py     # Questionnaire logic
+│   │   └── user.py              # User-related commands
+│   └── utils/                    # Bot utilities
+│       ├── __init__.py
+│       └── validators.py        # Input validation utilities
+├── bot_config/                   # Bot configuration (renamed from config/)
+│   ├── __init__.py
+│   ├── bot_constants.py         # All bot constants and messages
+│   └── validators.py            # Environment validation
 ├── database/
-│   ├── __init__.py      # Database exports
-│   ├── database.py      # Database connection
-│   ├── models.py        # SQLAlchemy models
-│   ├── encryption.py    # Field encryption
-│   ├── helpers.py       # Database operations
-│   └── constants.py     # Constants and enums
+│   ├── __init__.py              # Database exports
+│   ├── database.py              # Database connection
+│   ├── models.py                # SQLAlchemy models
+│   ├── encryption.py            # Field encryption with error handling
+│   ├── helpers.py               # Database operations
+│   ├── constants.py             # Database constants and enums
+│   └── session_utils.py         # Session management utilities
 ├── scripts/
-│   └── data_export.py   # Export functionality
+│   ├── __init__.py
+│   ├── data_export.py           # Export functionality (modularized)
+│   └── setup_database.py        # Database setup utilities
 ├── alembic/
-│   └── versions/        # Database migrations
-├── run_bot.py          # Main entry point
-├── run_export.py       # CLI export tool
-├── requirements.txt    # Python dependencies
-├── justfile           # Command runner
-├── .env              # Environment variables (don't commit!)
-└── README.md         # This file
+│   └── versions/                # Database migrations
+├── config.py                    # Main configuration file
+├── run_bot.py                   # Main entry point with validation
+├── run_export.py                # CLI export tool
+├── requirements.txt             # Python dependencies
+├── justfile                     # Command runner
+├── .env                         # Environment variables (don't commit!)
+└── README.md                    # This file
 ```
 
 ### Common Commands (Using Just)
@@ -224,11 +257,32 @@ just env
    - MySQL with SQLAlchemy ORM
    - Alembic for migrations
    - Automatic encryption for sensitive fields
+   - Session management utilities for cleaner code
 
 4. **User States**: 
    - `active`: Receives automatic questionnaires
    - `inactive`: Paused (manual questionnaires only)
    - `blocked`: User blocked the bot
+
+### Recent Improvements
+
+#### Code Organization
+- **Modular structure**: Bot code split into `handlers/`, `utils/`, and other logical modules
+- **Renamed config directory**: Changed to `bot_config/` to avoid Python naming conflicts
+- **Consolidated decorators**: All decorators now in single `bot/decorators.py` file
+- **Professional naming conventions**: Snake_case for variables, descriptive function names
+
+#### New Features
+- **Environment validation**: Automatic validation on startup ensures all required variables are set
+- **Enhanced error handling**: Better encryption error handling with user-friendly messages
+- **Constants system**: Centralized constants in `bot_config/bot_constants.py` for easy maintenance
+- **Database utilities**: New `session_utils.py` with context managers and decorators
+
+#### Code Quality
+- **Split complex functions**: Large functions like `export_data` broken into smaller, focused functions
+- **Type hints**: Added throughout for better IDE support
+- **Comprehensive logging**: Structured logging with appropriate levels
+- **Error recovery**: Graceful handling of database and Telegram API errors
 
 ### Environment Modes
 
@@ -310,9 +364,12 @@ just run
 ## 🔒 Security
 
 - **Encryption**: Sensitive data (passport, phone, email) encrypted with Fernet
+- **Encryption Key Validation**: Automatic validation ensures encryption key is properly set
+- **Error Handling**: Graceful handling of encryption/decryption errors
 - **Environment Variables**: All secrets in `.env` (never commit!)
 - **User Identification**: Uses Telegram IDs
 - **Database Security**: Prepared statements, parameterized queries
+- **Session Management**: Automatic cleanup and proper transaction handling
 
 ## 📊 Features
 
@@ -351,12 +408,13 @@ python run_export.py 1 --days 30 --output-dir custom_exports/
 
 ### Export Contents
 - **Statistics**: Response rate, distress frequency, severity averages
-- **XML File**: Complete structured data
-- **Graphs**: 
+- **XML File**: Complete structured data with proper formatting
+- **Graphs** (generated using modular functions): 
   - Distress timeline
   - Severity distribution
   - Response rate
   - Severity trend
+- **Error handling**: Graceful fallback if graph generation fails
 
 ## 🚨 Important Notes
 

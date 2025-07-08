@@ -1,7 +1,11 @@
 import os
 from dotenv import load_dotenv
+from bot_config.validators import validate_environment
 
 load_dotenv()
+
+# Validate environment variables before proceeding
+validate_environment()
 
 # Environment
 ENVIRONMENT = os.getenv('ENVIRONMENT', 'DEV').upper()  # DEV or PROD
@@ -22,3 +26,7 @@ ENCRYPTION_KEY = os.getenv('ENCRYPTION_KEY')
 
 # LLM (optional for now)
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+
+# Admin settings
+# Comma-separated list of telegram IDs that have admin access
+ADMIN_TELEGRAM_IDS = os.getenv('ADMIN_TELEGRAM_IDS', '').split(',') if os.getenv('ADMIN_TELEGRAM_IDS') else []

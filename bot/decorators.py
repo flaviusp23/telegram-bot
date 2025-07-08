@@ -75,56 +75,6 @@ def require_registered_user(func: Callable[P, R]) -> Callable[P, R]:
     return wrapper
 
 
-def with_db_user(
-    send_error_message: bool = True,
-    error_message: Optional[str] = None
-) -> Callable:
-    """
-    Decorator that ensures the user is registered before allowing access to a command.
-    Automatically fetches the user from the database and passes it to the function.
-    
-    This is the db_decorators version of require_registered_user, kept for compatibility
-    and advanced use cases with custom error messages.
-    
-    Args:
-        send_error_message: Whether to send an error message if user is not registered
-        error_message: Custom error message (defaults to BotMessages.NOT_REGISTERED)
-    
-    The decorated function will receive the database user as 'user' in kwargs.
-    
-    Example:
-        @with_db_user()
-        async def my_command(update: Update, context: ContextTypes.DEFAULT_TYPE, user=None):
-            # user is automatically populated with the User object
-            await update.message.reply_text(f"Hello {user.first_name}!")
-    """
-    def decorator(func: Callable[..., T]) -> Callable[..., T]:
-        @functools.wraps(func)
-        async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE, *args, **kwargs) -> T:
-            user = update.effective_user
-            telegram_id = str(user.id)
-            
-            with db_session_context(commit=False) as db:
-                user = get_user_by_telegram_id(db, telegram_id)
-                
-                if not user:
-                    logger.warning(f"Unregistered user attempted to access {func.__name__}: {telegram_id}")
-                    if send_error_message:
-                        message = error_message or BotMessages.NOT_REGISTERED
-                        if update.message:
-                            await update.message.reply_text(message)
-                        elif update.callback_query:
-                            await update.callback_query.answer(message, show_alert=True)
-                    return None
-                
-                # Add user to kwargs
-                kwargs['user'] = user
-                return await func(update, context, *args, **kwargs)
-        
-        return wrapper
-    return decorator
-
-
 def with_user_context(func: Callable[P, R]) -> Callable[P, R]:
     """
     Decorator that automatically fetches user and stores in context.
@@ -325,38 +275,3 @@ def rate_limit(max_calls: int = 5, period_seconds: int = 60):
     return decorator
 
 
-def handle_db_errors(
-    error_message: Optional[str] = None,
-    log_errors: bool = True
-) -> Callable:
-    """
-    Decorator that handles database errors gracefully.
-    
-    Args:
-        error_message: Custom error message to send to user
-        log_errors: Whether to log errors
-    
-    Example:
-        @handle_db_errors(error_message="Failed to save your data")
-        async def save_user_data(update: Update, context: ContextTypes.DEFAULT_TYPE):
-            # Database operations here
-    """
-    def decorator(func: Callable[..., T]) -> Callable[..., T]:
-        @functools.wraps(func)
-        async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE, *args, **kwargs) -> T:
-            try:
-                return await func(update, context, *args, **kwargs)
-            except Exception as e:
-                if log_errors:
-                    logger.error(f"Database error in {func.__name__}: {e}")
-                
-                message = error_message or BotMessages.ERROR_GENERIC
-                if update.message:
-                    await update.message.reply_text(message)
-                elif update.callback_query:
-                    await update.callback_query.answer(message, show_alert=True)
-                    
-                return None
-        
-        return wrapper
-    return decorator

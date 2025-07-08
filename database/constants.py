@@ -111,31 +111,3 @@ class TableNames:
     RESPONSES = "responses"
     ASSISTANT_INTERACTIONS = "assistant_interactions"
 
-# Indexes
-class IndexNames:
-    """Database index names"""
-    USER_TELEGRAM_ID = "idx_user_telegram_id"
-    USER_STATUS = "idx_user_status"
-    RESPONSE_USER_ID = "idx_response_user_id"
-    RESPONSE_TIMESTAMP = "idx_response_timestamp"
-    INTERACTION_USER_ID = "idx_interaction_user_id"
-    INTERACTION_TIMESTAMP = "idx_interaction_timestamp"
-
-# Constraints
-class ConstraintNames:
-    """Database constraint names"""
-    USER_TELEGRAM_UNIQUE = "unique_telegram_id"
-    USER_EMAIL_UNIQUE = "unique_email"
-
-# Time Constants
-class TimeConstants:
-    """Time-related constants"""
-    LAST_INTERACTION_UPDATE_THRESHOLD_SECONDS = 60  # Update last_interaction if more than 60 seconds passed
-    RESPONSE_EXPIRY_DAYS = 365  # Keep responses for 1 year
-    
-# Encryption Constants
-class EncryptionConstants:
-    """Constants for data encryption"""
-    SALT_LENGTH = 16
-    KEY_LENGTH = 32
-    ITERATIONS = 100000

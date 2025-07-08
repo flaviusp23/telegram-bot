@@ -24,8 +24,6 @@ DB_NAME = os.getenv('DB_NAME', 'diabetes_monitoring')
 # Encryption
 ENCRYPTION_KEY = os.getenv('ENCRYPTION_KEY')
 
-# LLM (optional for now)
-OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 
 # Admin settings
 # Comma-separated list of telegram IDs that have admin access

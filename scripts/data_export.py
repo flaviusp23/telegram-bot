@@ -5,7 +5,6 @@ import argparse
 import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any
-import json
 from pathlib import Path
 
 # Add parent directory to path

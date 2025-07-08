@@ -7,10 +7,10 @@ alembic==1.16.2
 cryptography==41.0.7
 python-dotenv==1.0.0
 
-# Data Export - Temporarily disabled for faster deployment
-# pandas==2.2.0  
-# matplotlib==3.8.2
-# lxml==5.1.0
+# Data Export
+pandas==2.2.0
+matplotlib==3.8.2
+lxml==5.1.0
 
 # LLM
 # openai==1.6.1

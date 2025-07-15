@@ -115,6 +115,33 @@ async def dashboard(request: Request):
     )
 
 
+@app.get("/users", response_class=HTMLResponse)
+async def users_page(request: Request):
+    """Serve the users management page."""
+    return templates.TemplateResponse(
+        "users.html",
+        {"request": request, "title": "User Management"}
+    )
+
+
+@app.get("/user", response_class=HTMLResponse)
+async def user_detail_page(request: Request):
+    """Serve the user detail page."""
+    return templates.TemplateResponse(
+        "user_detail.html",
+        {"request": request, "title": "User Details"}
+    )
+
+
+@app.get("/logs", response_class=HTMLResponse)
+async def logs_page(request: Request):
+    """Serve the audit logs page."""
+    return templates.TemplateResponse(
+        "logs.html",
+        {"request": request, "title": "Audit Logs"}
+    )
+
+
 # Health check endpoint
 @app.get("/health", tags=["health"])
 async def health_check():

@@ -7,7 +7,7 @@ from fastapi import APIRouter
 router = APIRouter()
 
 # Import and include individual route modules here
-from admin.api.v1 import auth, users, analytics
+from admin.api.v1 import auth, users, analytics, export, audit
 
 # Include the auth router (prefix already defined in auth.py)
 router.include_router(auth.router)
@@ -15,6 +15,10 @@ router.include_router(auth.router)
 router.include_router(users.router, prefix="/users", tags=["users"])
 # Include the analytics router
 router.include_router(analytics.router, prefix="/analytics", tags=["analytics"])
+# Include the export router
+router.include_router(export.router, prefix="/export", tags=["export"])
+# Include the audit router
+router.include_router(audit.router, prefix="/audit", tags=["audit"])
 
 # You can also add version-specific endpoints here
 @router.get("/")

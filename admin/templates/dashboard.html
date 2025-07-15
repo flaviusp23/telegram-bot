@@ -2,7 +2,7 @@
 
 {% block content %}
 <div class="container">
-    <div style="display: flex; justify-content: space-between; align-items: center;">
+    <div class="dashboard-header">
         <h1>Admin Dashboard</h1>
         <button class="btn btn-primary" onclick="loadDashboardData(true)" title="Refresh data">
             🔄 Refresh
@@ -46,20 +46,35 @@
         </section>
         
         <section class="dashboard-section">
-            <h2>Response Statistics</h2>
+            <h2>Key Insights</h2>
             <div id="response-stats">
                 <div class="stats-grid">
                     <div class="stat-item">
-                        <span class="stat-label">Avg Severity (30d):</span>
-                        <span class="stat-value" id="avg-severity">-</span>
+                        <div class="stat-main">
+                            <span class="stat-label">Average Distress Level</span>
+                            <span class="stat-value" id="avg-severity">-</span>
+                        </div>
+                        <div class="stat-description">
+                            How severe users rate their distress (1=Low, 5=High)
+                        </div>
                     </div>
                     <div class="stat-item">
-                        <span class="stat-label">Response Rate:</span>
-                        <span class="stat-value" id="response-rate">-</span>
+                        <div class="stat-main">
+                            <span class="stat-label">User Engagement</span>
+                            <span class="stat-value" id="response-rate">-</span>
+                        </div>
+                        <div class="stat-description">
+                            Daily check-ins completed (expecting 3 per day)
+                        </div>
                     </div>
                     <div class="stat-item">
-                        <span class="stat-label">User Growth:</span>
-                        <span class="stat-value" id="user-growth">-</span>
+                        <div class="stat-main">
+                            <span class="stat-label">New Users This Month</span>
+                            <span class="stat-value" id="user-growth">-</span>
+                        </div>
+                        <div class="stat-description">
+                            Growth compared to previous month
+                        </div>
                     </div>
                 </div>
             </div>
@@ -70,6 +85,14 @@
 
 {% block extra_css %}
 <style>
+.dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    gap: 1rem;
+}
+
 .stats-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -78,23 +101,35 @@
 }
 
 .stat-item {
-    background: #f5f5f5;
-    padding: 15px;
+    background: #f8f9fa;
+    padding: 20px;
     border-radius: 8px;
+    border-left: 4px solid #2196F3;
+}
+
+.stat-main {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    margin-bottom: 8px;
 }
 
 .stat-label {
-    color: #666;
-    font-size: 14px;
+    color: #333;
+    font-size: 16px;
+    font-weight: 600;
 }
 
 .stat-value {
-    font-size: 20px;
+    font-size: 24px;
     font-weight: bold;
-    color: #333;
+    color: #2196F3;
+}
+
+.stat-description {
+    color: #666;
+    font-size: 13px;
+    line-height: 1.4;
 }
 
 .dashboard-card .metric {
@@ -102,6 +137,144 @@
     font-weight: bold;
     margin: 10px 0;
     color: #2196F3;
+}
+
+#activity-log {
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.activity-item {
+    display: flex;
+    align-items: start;
+    gap: 12px;
+    padding: 12px;
+    border-bottom: 1px solid #eee;
+    transition: background-color 0.2s;
+}
+
+.activity-item:hover {
+    background-color: #f8f9fa;
+}
+
+.activity-item:last-child {
+    border-bottom: none;
+}
+
+.activity-icon {
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+.activity-content {
+    flex: 1;
+}
+
+.activity-text {
+    color: #333;
+    margin: 0;
+    font-size: 14px;
+}
+
+.activity-time {
+    color: #666;
+    font-size: 12px;
+    margin-top: 4px;
+}
+
+.activity-severity-info .activity-text {
+    color: #28a745;
+}
+
+.activity-severity-warning .activity-text {
+    color: #dc3545;
+}
+
+.activity-severity-success .activity-text {
+    color: #007bff;
+}
+
+.activity-severity-admin .activity-text {
+    color: #6c757d;
+}
+
+.activity-user-link {
+    color: #007bff;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.activity-user-link:hover {
+    text-decoration: underline;
+}
+
+.no-activity {
+    text-align: center;
+    color: #666;
+    padding: 40px;
+}
+
+/* Mobile dashboard styles */
+@media (max-width: 768px) {
+    .dashboard-header {
+        flex-direction: column;
+        align-items: stretch;
+        text-align: center;
+    }
+    
+    .dashboard-header h1 {
+        font-size: 1.5rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .stats-grid {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+    
+    .stat-item {
+        padding: 15px;
+    }
+    
+    .stat-label {
+        font-size: 14px;
+    }
+    
+    .stat-value {
+        font-size: 20px;
+    }
+    
+    .stat-description {
+        font-size: 12px;
+    }
+    
+    .activity-item {
+        padding: 10px;
+    }
+    
+    .activity-text {
+        font-size: 13px;
+    }
+    
+    .activity-time {
+        font-size: 11px;
+    }
+}
+
+@media (max-width: 480px) {
+    .dashboard-header h1 {
+        font-size: 1.25rem;
+    }
+    
+    .stat-item {
+        padding: 12px;
+    }
+    
+    .stat-main {
+        flex-direction: column;
+        text-align: center;
+        gap: 0.5rem;
+    }
 }
 </style>
 {% endblock %}
@@ -131,11 +304,60 @@ async function loadDashboardData(fresh = false) {
             document.querySelector('.dashboard-card:nth-child(4) .metric').textContent = data.metrics.distress_percentage.toFixed(1) + '%';
         }
         
-        // Update additional statistics
+        // Update additional statistics with better formatting
         if (data.metrics) {
-            document.getElementById('avg-severity').textContent = data.metrics.average_severity.toFixed(1) + '/5';
-            document.getElementById('response-rate').textContent = data.metrics.response_rate.toFixed(1) + '%';
-            document.getElementById('user-growth').textContent = data.metrics.user_growth_rate > 0 ? '+' + data.metrics.user_growth_rate.toFixed(1) + '%' : data.metrics.user_growth_rate.toFixed(1) + '%';
+            // Average severity with visual indicator
+            const avgSeverity = data.metrics.average_severity;
+            let severityText = avgSeverity.toFixed(1);
+            let severityIndicator = '';
+            
+            if (avgSeverity <= 2) {
+                severityIndicator = ' 😊 Low';
+                document.getElementById('avg-severity').style.color = '#28a745';
+            } else if (avgSeverity <= 3.5) {
+                severityIndicator = ' 😐 Moderate';
+                document.getElementById('avg-severity').style.color = '#ffc107';
+            } else {
+                severityIndicator = ' 😟 High';
+                document.getElementById('avg-severity').style.color = '#dc3545';
+            }
+            document.getElementById('avg-severity').textContent = severityText + severityIndicator;
+            
+            // Response rate with engagement level (based on 3 daily check-ins)
+            const responseRate = data.metrics.response_rate;
+            let engagementText = '';
+            if (responseRate >= 90) {
+                engagementText = responseRate.toFixed(0) + '% 🎯 Excellent!';
+                document.getElementById('response-rate').style.color = '#28a745';
+            } else if (responseRate >= 70) {
+                engagementText = responseRate.toFixed(0) + '% 👍 Good';
+                document.getElementById('response-rate').style.color = '#28a745';
+            } else if (responseRate >= 50) {
+                engagementText = responseRate.toFixed(0) + '% 📊 Fair';
+                document.getElementById('response-rate').style.color = '#ffc107';
+            } else if (responseRate >= 30) {
+                engagementText = responseRate.toFixed(0) + '% ⚠️ Low';
+                document.getElementById('response-rate').style.color = '#ff9800';
+            } else {
+                engagementText = responseRate.toFixed(0) + '% 📉 Very Low';
+                document.getElementById('response-rate').style.color = '#dc3545';
+            }
+            document.getElementById('response-rate').textContent = engagementText;
+            
+            // User growth with context
+            const growth = data.metrics.user_growth_rate;
+            let growthText = '';
+            if (growth > 0) {
+                growthText = '+' + growth.toFixed(0) + '% 📈';
+                document.getElementById('user-growth').style.color = '#28a745';
+            } else if (growth === 0) {
+                growthText = 'No change 📊';
+                document.getElementById('user-growth').style.color = '#6c757d';
+            } else {
+                growthText = growth.toFixed(0) + '% 📉';
+                document.getElementById('user-growth').style.color = '#dc3545';
+            }
+            document.getElementById('user-growth').textContent = growthText;
         }
         console.log('Dashboard data loaded:', data);
         
@@ -145,13 +367,105 @@ async function loadDashboardData(fresh = false) {
         indicator.textContent = `Last updated: ${updateTime}`;
         indicator.style.opacity = '1';
         setTimeout(() => indicator.style.opacity = '0.5', 1000);
+        
+        // Load recent activity
+        loadRecentActivity();
     } catch (error) {
         console.error('Failed to load dashboard data:', error);
     }
 }
 
-function exportData() {
-    window.location.href = '/api/v1/export';
+async function loadRecentActivity() {
+    try {
+        const data = await window.erasmusAdmin.apiRequest('/analytics/recent-activity?limit=15');
+        const activityLog = document.getElementById('activity-log');
+        
+        if (data.activities && data.activities.length > 0) {
+            activityLog.innerHTML = data.activities.map(activity => {
+                const time = new Date(activity.timestamp);
+                const timeStr = formatRelativeTime(time);
+                
+                // Make user names clickable
+                let text = activity.text;
+                if (activity.user_id && activity.type !== 'admin_action') {
+                    text = text.replace(
+                        /^([^:]+)/,
+                        `<a href="/user?id=${activity.user_id}" class="activity-user-link">$1</a>`
+                    );
+                }
+                
+                return `
+                    <div class="activity-item activity-severity-${activity.severity}">
+                        <div class="activity-icon">${activity.icon}</div>
+                        <div class="activity-content">
+                            <p class="activity-text">${text}</p>
+                            <div class="activity-time">${timeStr}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        } else {
+            activityLog.innerHTML = '<div class="no-activity">No recent activity</div>';
+        }
+    } catch (error) {
+        console.error('Failed to load recent activity:', error);
+        document.getElementById('activity-log').innerHTML = 
+            '<div class="no-activity">Failed to load activity</div>';
+    }
+}
+
+function formatRelativeTime(date) {
+    const now = new Date();
+    const diff = now - date;
+    
+    const seconds = Math.floor(diff / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+    
+    if (days > 0) {
+        return `${days} day${days > 1 ? 's' : ''} ago`;
+    } else if (hours > 0) {
+        return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+    } else if (minutes > 0) {
+        return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
+    } else {
+        return 'Just now';
+    }
+}
+
+async function exportData() {
+    // Show export options
+    const format = confirm('Export as Excel? (OK for Excel, Cancel for CSV)') ? 'excel' : 'csv';
+    const days = prompt('Export data from last how many days?', '30');
+    
+    if (days && !isNaN(days)) {
+        try {
+            const token = localStorage.getItem('access_token');
+            const response = await fetch(`/api/v1/export/responses?format=${format}&days=${days}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `responses_${new Date().toISOString().split('T')[0]}.${format === 'excel' ? 'xlsx' : 'csv'}`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                a.remove();
+            } else {
+                alert('Failed to export data');
+            }
+        } catch (error) {
+            console.error('Export failed:', error);
+            alert('Export failed');
+        }
+    }
 }
 
 function viewUsers() {
@@ -167,6 +481,8 @@ document.addEventListener('DOMContentLoaded', () => {
     loadDashboardData(); // Initial load (can use cache)
     // Refresh every 30 seconds with fresh data
     setInterval(() => loadDashboardData(true), 30000);
+    // Refresh activity more frequently (every 10 seconds)
+    setInterval(() => loadRecentActivity(), 10000);
 });
 </script>
 {% endblock %}

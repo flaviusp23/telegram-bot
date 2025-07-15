@@ -145,12 +145,21 @@ async def get_dashboard_analytics(
         Response.question_type == 'severity_rating'
     ).scalar() or 0
     
-    # Response rate (users who responded / active users)
-    users_who_responded = db.query(func.count(func.distinct(Response.user_id))).filter(
-        Response.response_timestamp >= days_ago
+    # Response rate based on expected 3 questionnaires per day
+    # Count actual responses in period
+    total_responses_in_period = db.query(func.count(Response.id)).filter(
+        Response.response_timestamp >= days_ago,
+        Response.question_type == 'distress_check'  # Count distress checks as primary indicator
     ).scalar()
     
-    response_rate = (users_who_responded / active_users * 100) if active_users > 0 else 0
+    # Calculate expected responses (3 per day * number of days * active users)
+    expected_responses = 3 * days * active_users
+    
+    # Calculate engagement rate as percentage of expected responses
+    response_rate = (total_responses_in_period / expected_responses * 100) if expected_responses > 0 else 0
+    
+    # Cap at 100% (in case of more responses than expected)
+    response_rate = min(response_rate, 100.0)
     
     result = {
         "overview": {
@@ -593,3 +602,103 @@ async def clear_analytics_cache(
     analytics_cache.clear()
     
     return {"message": "Analytics cache cleared successfully"}
+
+
+@router.get("/recent-activity")
+async def get_recent_activity(
+    db: Session = Depends(get_db),
+    current_admin: AdminUser = Depends(require_viewer),
+    limit: int = Query(10, description="Number of activities to return", ge=1, le=50)
+) -> Dict[str, Any]:
+    """
+    Get recent system activity including new users, responses, and admin actions.
+    """
+    from admin.models.admin import AuditLog
+    
+    # Get recent responses
+    recent_responses = db.query(
+        Response.id,
+        Response.user_id,
+        Response.question_type,
+        Response.response_value,
+        Response.response_timestamp,
+        User.first_name,
+        User.family_name
+    ).join(User).order_by(
+        Response.response_timestamp.desc()
+    ).limit(limit).all()
+    
+    # Get recent users
+    recent_users = db.query(User).order_by(
+        User.registration_date.desc()
+    ).limit(5).all()
+    
+    # Get recent admin actions
+    recent_admin_actions = db.query(
+        AuditLog.id,
+        AuditLog.action,
+        AuditLog.resource_type,
+        AuditLog.resource_id,
+        AuditLog.timestamp,
+        AdminUser.username
+    ).join(AdminUser).order_by(
+        AuditLog.timestamp.desc()
+    ).limit(limit).all()
+    
+    # Combine and sort activities by timestamp
+    activities = []
+    
+    # Add responses
+    for r in recent_responses:
+        activity_text = f"{r.first_name} {r.family_name or ''} responded to {r.question_type.replace('_', ' ')}"
+        if r.question_type == 'distress_check':
+            activity_text += f": {r.response_value.upper()}"
+        elif r.question_type == 'severity_rating':
+            activity_text += f": {r.response_value}/5"
+            
+        activities.append({
+            "type": "response",
+            "timestamp": r.response_timestamp,
+            "text": activity_text,
+            "icon": "📝",
+            "user_id": r.user_id,
+            "severity": "info" if r.response_value == "no" else "warning"
+        })
+    
+    # Add new users from last 24 hours
+    yesterday = datetime.now() - timedelta(days=1)
+    for u in recent_users:
+        if u.registration_date >= yesterday:
+            activities.append({
+                "type": "new_user",
+                "timestamp": u.registration_date,
+                "text": f"New user registered: {u.first_name} {u.family_name or ''}",
+                "icon": "👤",
+                "user_id": u.id,
+                "severity": "success"
+            })
+    
+    # Add admin actions
+    for a in recent_admin_actions:
+        action_text = f"Admin {a.username}: {a.action.replace('_', ' ')}"
+        if a.resource_type and a.resource_id:
+            action_text += f" ({a.resource_type} #{a.resource_id})"
+            
+        activities.append({
+            "type": "admin_action",
+            "timestamp": a.timestamp,
+            "text": action_text,
+            "icon": "⚙️",
+            "severity": "admin"
+        })
+    
+    # Sort all activities by timestamp
+    activities.sort(key=lambda x: x["timestamp"], reverse=True)
+    
+    # Limit to requested number
+    activities = activities[:limit]
+    
+    return {
+        "activities": activities,
+        "count": len(activities)
+    }

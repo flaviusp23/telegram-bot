@@ -1,0 +1,278 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<style>
+    .logs-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+    }
+    
+    .logs-filters {
+        display: flex;
+        gap: 15px;
+        margin-bottom: 20px;
+        padding: 20px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+    }
+    
+    .filter-group label {
+        font-size: 14px;
+        color: #666;
+    }
+    
+    .filter-group select,
+    .filter-group input {
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+    
+    .logs-table {
+        width: 100%;
+        background: white;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    .logs-table table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    .logs-table th {
+        background-color: #f8f9fa;
+        padding: 15px;
+        text-align: left;
+        font-weight: 600;
+        color: #333;
+        border-bottom: 2px solid #dee2e6;
+    }
+    
+    .logs-table td {
+        padding: 15px;
+        border-bottom: 1px solid #dee2e6;
+    }
+    
+    .logs-table tr:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .action-badge {
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 500;
+        background-color: #e3f2fd;
+        color: #1976d2;
+    }
+    
+    .details-button {
+        padding: 5px 10px;
+        font-size: 14px;
+        background-color: #3498db;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+    
+    .details-button:hover {
+        background-color: #2980b9;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="logs-header">
+        <h1>Audit Logs</h1>
+        <button class="btn btn-secondary" onclick="refreshLogs()">
+            🔄 Refresh
+        </button>
+    </div>
+    
+    <div class="logs-filters">
+        <div class="filter-group">
+            <label>Admin User</label>
+            <select id="filter-admin" onchange="filterLogs()">
+                <option value="">All Admins</option>
+            </select>
+        </div>
+        
+        <div class="filter-group">
+            <label>Action</label>
+            <select id="filter-action" onchange="filterLogs()">
+                <option value="">All Actions</option>
+                <option value="login">Login</option>
+                <option value="logout">Logout</option>
+                <option value="change_password">Change Password</option>
+                <option value="update_user">Update User</option>
+                <option value="block_user">Block User</option>
+                <option value="unblock_user">Unblock User</option>
+            </select>
+        </div>
+        
+        <div class="filter-group">
+            <label>Date Range</label>
+            <select id="filter-range" onchange="filterLogs()">
+                <option value="today">Today</option>
+                <option value="week" selected>Last 7 days</option>
+                <option value="month">Last 30 days</option>
+                <option value="all">All time</option>
+            </select>
+        </div>
+    </div>
+    
+    <div class="logs-table">
+        <table>
+            <thead>
+                <tr>
+                    <th>Timestamp</th>
+                    <th>Admin User</th>
+                    <th>Action</th>
+                    <th>Resource</th>
+                    <th>IP Address</th>
+                    <th>Details</th>
+                </tr>
+            </thead>
+            <tbody id="logs-tbody">
+                <tr>
+                    <td colspan="6" style="text-align: center; padding: 40px;">
+                        Loading audit logs...
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let allLogs = [];
+
+async function loadLogs() {
+    try {
+        const data = await window.erasmusAdmin.apiRequest('/audit/logs/?limit=100');
+        allLogs = data.items || [];
+        
+        // Populate admin filter
+        const adminFilter = document.getElementById('filter-admin');
+        const admins = [...new Set(allLogs.map(log => log.admin_username))];
+        adminFilter.innerHTML = '<option value="">All Admins</option>' + 
+            admins.map(admin => `<option value="${admin}">${admin}</option>`).join('');
+        
+        displayLogs(allLogs);
+    } catch (error) {
+        console.error('Failed to load logs:', error);
+        document.getElementById('logs-tbody').innerHTML = 
+            '<tr><td colspan="6" style="text-align: center; color: red;">Failed to load audit logs</td></tr>';
+    }
+}
+
+function displayLogs(logs) {
+    const tbody = document.getElementById('logs-tbody');
+    
+    if (logs && logs.length > 0) {
+        tbody.innerHTML = logs.map(log => `
+            <tr>
+                <td>${window.erasmusAdmin.formatDate(log.timestamp)}</td>
+                <td>${log.admin_username || 'System'}</td>
+                <td><span class="action-badge">${formatAction(log.action)}</span></td>
+                <td>${log.resource_type || '-'} ${log.resource_id ? '#' + log.resource_id : ''}</td>
+                <td>${log.ip_address || '-'}</td>
+                <td>
+                    ${log.details ? 
+                        `<button class="details-button" onclick="showDetails('${escapeHtml(JSON.stringify(log.details))}')">View</button>` : 
+                        '-'
+                    }
+                </td>
+            </tr>
+        `).join('');
+    } else {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center;">No audit logs found</td></tr>';
+    }
+}
+
+function filterLogs() {
+    const adminFilter = document.getElementById('filter-admin').value;
+    const actionFilter = document.getElementById('filter-action').value;
+    const rangeFilter = document.getElementById('filter-range').value;
+    
+    let filtered = [...allLogs];
+    
+    // Filter by admin
+    if (adminFilter) {
+        filtered = filtered.filter(log => log.admin_username === adminFilter);
+    }
+    
+    // Filter by action
+    if (actionFilter) {
+        filtered = filtered.filter(log => log.action === actionFilter);
+    }
+    
+    // Filter by date range
+    const now = new Date();
+    let startDate;
+    switch (rangeFilter) {
+        case 'today':
+            startDate = new Date(now.setHours(0, 0, 0, 0));
+            break;
+        case 'week':
+            startDate = new Date(now.setDate(now.getDate() - 7));
+            break;
+        case 'month':
+            startDate = new Date(now.setDate(now.getDate() - 30));
+            break;
+        default:
+            startDate = null;
+    }
+    
+    if (startDate) {
+        filtered = filtered.filter(log => new Date(log.timestamp) >= startDate);
+    }
+    
+    displayLogs(filtered);
+}
+
+function formatAction(action) {
+    return action.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+}
+
+function escapeHtml(unsafe) {
+    return unsafe
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+function showDetails(detailsJson) {
+    try {
+        const details = JSON.parse(detailsJson);
+        alert('Details:\n\n' + JSON.stringify(details, null, 2));
+    } catch (e) {
+        alert('Failed to parse details');
+    }
+}
+
+function refreshLogs() {
+    loadLogs();
+}
+
+// Load logs on page load
+document.addEventListener('DOMContentLoaded', loadLogs);
+</script>
+{% endblock %}

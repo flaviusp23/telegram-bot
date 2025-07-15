@@ -10,6 +10,7 @@ body {
     line-height: 1.6;
     color: #333;
     background-color: #f5f5f5;
+    font-size: 16px;
 }
 
 .container {
@@ -18,12 +19,26 @@ body {
     padding: 0 20px;
 }
 
+/* Mobile-first responsive breakpoints */
+@media (max-width: 768px) {
+    .container {
+        padding: 0 15px;
+    }
+    
+    body {
+        font-size: 14px;
+    }
+}
+
 /* Navbar */
 .navbar {
     background-color: #2c3e50;
     color: white;
     padding: 1rem 0;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
 }
 
 .navbar .container {
@@ -49,6 +64,7 @@ body {
     color: white;
     text-decoration: none;
     transition: opacity 0.3s;
+    white-space: nowrap;
 }
 
 .nav-links a:hover {
@@ -64,6 +80,41 @@ body {
 
 #auth-nav-item a:hover {
     background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Mobile navbar */
+@media (max-width: 768px) {
+    .navbar {
+        padding: 0.75rem 0;
+    }
+    
+    .brand {
+        font-size: 1.2rem;
+    }
+    
+    .nav-links {
+        gap: 1rem;
+    }
+    
+    .nav-links a {
+        font-size: 0.9rem;
+    }
+    
+    #auth-nav-item a {
+        padding: 4px 12px;
+        font-size: 0.85rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .navbar .container {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .nav-links {
+        gap: 0.75rem;
+    }
 }
 
 /* Main content */
@@ -91,6 +142,8 @@ body {
     cursor: pointer;
     transition: background-color 0.3s;
     font-size: 1rem;
+    text-align: center;
+    min-width: fit-content;
 }
 
 .btn-primary {
@@ -109,6 +162,16 @@ body {
 
 .btn-secondary:hover {
     background-color: #7f8c8d;
+}
+
+/* Mobile buttons */
+@media (max-width: 768px) {
+    .btn {
+        padding: 0.6rem 1.2rem;
+        font-size: 0.9rem;
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
 }
 
 /* Forms */
@@ -148,6 +211,37 @@ body {
 .login-container h2 {
     margin-bottom: 1.5rem;
     text-align: center;
+}
+
+/* Mobile login */
+@media (max-width: 768px) {
+    .login-container {
+        margin: 2rem auto;
+        padding: 1.5rem;
+        max-width: 90%;
+    }
+    
+    .login-container h2 {
+        font-size: 1.3rem;
+        margin-bottom: 1rem;
+    }
+    
+    .form-group input {
+        padding: 0.9rem;
+        font-size: 16px; /* Prevents zoom on iOS */
+    }
+}
+
+@media (max-width: 480px) {
+    .login-container {
+        margin: 1rem auto;
+        padding: 1rem;
+        border-radius: 4px;
+    }
+    
+    .login-container h2 {
+        font-size: 1.2rem;
+    }
 }
 
 /* Error messages */
@@ -252,4 +346,118 @@ body {
     background: #f8f9fa;
     border-radius: 4px;
     min-height: 200px;
+}
+
+/* Mobile utility classes */
+@media (max-width: 768px) {
+    .mobile-hidden {
+        display: none !important;
+    }
+    
+    .mobile-full-width {
+        width: 100% !important;
+    }
+    
+    .mobile-text-center {
+        text-align: center !important;
+    }
+    
+    .mobile-scroll {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .mobile-no-padding {
+        padding: 0 !important;
+    }
+    
+    .mobile-small-padding {
+        padding: 0.5rem !important;
+    }
+    
+    .mobile-stack {
+        flex-direction: column !important;
+    }
+    
+    .mobile-gap-small {
+        gap: 0.5rem !important;
+    }
+    
+    /* Touch-friendly targets */
+    button, .btn, a[role="button"] {
+        min-height: 44px;
+        min-width: 44px;
+    }
+    
+    /* Prevent text zoom on form inputs in iOS */
+    input[type="text"],
+    input[type="password"],
+    input[type="email"],
+    select,
+    textarea {
+        font-size: 16px !important;
+    }
+}
+
+/* Mobile dashboard */
+@media (max-width: 768px) {
+    .dashboard-grid {
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin: 1.5rem 0;
+    }
+    
+    .dashboard-card {
+        padding: 1rem;
+    }
+    
+    .dashboard-card h3 {
+        font-size: 0.8rem;
+    }
+    
+    .metric {
+        font-size: 1.5rem;
+    }
+    
+    .dashboard-sections {
+        margin-top: 2rem;
+    }
+    
+    .dashboard-section {
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .dashboard-section h2 {
+        font-size: 1.2rem;
+    }
+    
+    .action-buttons {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    #activity-log {
+        padding: 0.75rem;
+        min-height: 150px;
+    }
+}
+
+@media (max-width: 480px) {
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+    }
+    
+    .dashboard-card {
+        padding: 0.75rem;
+    }
+    
+    .metric {
+        font-size: 1.25rem;
+    }
+    
+    .dashboard-section {
+        padding: 1rem;
+    }
 }

@@ -74,12 +74,12 @@ async def create_audit_log(
         Created AuditLog instance
     """
     audit_log = AuditLog(
-        admin_id=admin_id,
+        admin_user_id=admin_id,  # Changed from admin_id
         action=action,
-        entity_type=entity_type,
-        entity_id=entity_id,
-        changes_json=changes,
-        ip_address=request.client.host if request else None,
+        resource_type=entity_type,  # Changed from entity_type
+        resource_id=entity_id,  # Changed from entity_id
+        details=changes,  # Changed from changes_json
+        ip_address=request.client.host if request and request.client else None,
         user_agent=request.headers.get("user-agent") if request else None
     )
     

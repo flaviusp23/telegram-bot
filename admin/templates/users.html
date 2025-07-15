@@ -1,0 +1,312 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<style>
+    .users-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+    }
+    
+    .user-table {
+        width: 100%;
+        background: white;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    .user-table table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    .user-table th {
+        background-color: #f8f9fa;
+        padding: 15px;
+        text-align: left;
+        font-weight: 600;
+        color: #333;
+        border-bottom: 2px solid #dee2e6;
+    }
+    
+    .user-table td {
+        padding: 15px;
+        border-bottom: 1px solid #dee2e6;
+    }
+    
+    .user-table tr:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .status-badge {
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 500;
+    }
+    
+    .status-active {
+        background-color: #d4edda;
+        color: #155724;
+    }
+    
+    .status-inactive {
+        background-color: #f8d7da;
+        color: #721c24;
+    }
+    
+    .status-blocked {
+        background-color: #d1ecf1;
+        color: #0c5460;
+    }
+    
+    .action-buttons {
+        display: flex;
+        gap: 10px;
+    }
+    
+    .btn-small {
+        padding: 5px 10px;
+        font-size: 14px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: opacity 0.3s;
+    }
+    
+    .btn-small:hover {
+        opacity: 0.8;
+    }
+    
+    .btn-view {
+        background-color: #3498db;
+        color: white;
+    }
+    
+    .btn-block {
+        background-color: #e74c3c;
+        color: white;
+    }
+    
+    .btn-unblock {
+        background-color: #27ae60;
+        color: white;
+    }
+    
+    /* Mobile users page */
+    @media (max-width: 768px) {
+        .users-header {
+            flex-direction: column;
+            gap: 1rem;
+            align-items: stretch;
+        }
+        
+        .users-header h1 {
+            font-size: 1.5rem;
+            text-align: center;
+        }
+        
+        .user-table {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        .user-table table {
+            min-width: 600px;
+        }
+        
+        .user-table th,
+        .user-table td {
+            padding: 10px 8px;
+            font-size: 0.9rem;
+        }
+        
+        .user-table th {
+            font-size: 0.8rem;
+        }
+        
+        .action-buttons {
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .btn-small {
+            padding: 4px 8px;
+            font-size: 12px;
+            width: 100%;
+        }
+        
+        .status-badge {
+            font-size: 11px;
+            padding: 3px 8px;
+        }
+    }
+    
+    @media (max-width: 480px) {
+        .user-table table {
+            min-width: 500px;
+        }
+        
+        .user-table th,
+        .user-table td {
+            padding: 8px 5px;
+            font-size: 0.8rem;
+        }
+        
+        .users-header h1 {
+            font-size: 1.25rem;
+        }
+        
+        /* Hide less important columns on very small screens */
+        .user-table th:nth-child(3),
+        .user-table td:nth-child(3) {
+            display: none;
+        }
+        
+        .user-table th:nth-child(6),
+        .user-table td:nth-child(6) {
+            display: none;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="users-header">
+        <h1>User Management</h1>
+        <button class="btn btn-primary" onclick="exportUsers()">
+            📥 Export Users
+        </button>
+    </div>
+    
+    <div class="user-table">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Telegram ID</th>
+                    <th>Status</th>
+                    <th>Registration Date</th>
+                    <th>Last Interaction</th>
+                    <th>Responses</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="users-tbody">
+                <tr>
+                    <td colspan="8" style="text-align: center; padding: 40px;">
+                        Loading users...
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function loadUsers() {
+    try {
+        const data = await window.erasmusAdmin.apiRequest('/users/');
+        const tbody = document.getElementById('users-tbody');
+        
+        if (data.items && data.items.length > 0) {
+            tbody.innerHTML = data.items.map(user => `
+                <tr>
+                    <td>${user.id}</td>
+                    <td>${user.first_name} ${user.family_name || ''}</td>
+                    <td>${user.telegram_id}</td>
+                    <td>
+                        <span class="status-badge status-${user.status}">
+                            ${user.status}
+                        </span>
+                    </td>
+                    <td>${window.erasmusAdmin.formatDate(user.registration_date)}</td>
+                    <td>${user.last_interaction ? window.erasmusAdmin.formatDate(user.last_interaction) : '-'}</td>
+                    <td>${user.response_count}</td>
+                    <td>
+                        <div class="action-buttons">
+                            <button class="btn-small btn-view" onclick="viewUser(${user.id})">View</button>
+                            ${user.status === 'active' ? 
+                                `<button class="btn-small btn-block" onclick="blockUser(${user.id})">Block</button>` :
+                                `<button class="btn-small btn-unblock" onclick="unblockUser(${user.id})">Unblock</button>`
+                            }
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        } else {
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align: center;">No users found</td></tr>';
+        }
+    } catch (error) {
+        console.error('Failed to load users:', error);
+        document.getElementById('users-tbody').innerHTML = 
+            '<tr><td colspan="8" style="text-align: center; color: red;">Failed to load users</td></tr>';
+    }
+}
+
+async function exportUsers() {
+    try {
+        const token = localStorage.getItem('access_token');
+        const response = await fetch(`/api/v1/export/users?format=excel`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
+        if (response.ok) {
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `users_${new Date().toISOString().split('T')[0]}.xlsx`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            a.remove();
+        } else {
+            alert('Failed to export users');
+        }
+    } catch (error) {
+        console.error('Export failed:', error);
+        alert('Export failed');
+    }
+}
+
+function viewUser(userId) {
+    window.location.href = `/user?id=${userId}`;
+}
+
+async function blockUser(userId) {
+    if (confirm('Are you sure you want to block this user?')) {
+        try {
+            await window.erasmusAdmin.apiRequest(`/users/${userId}/block`, { method: 'POST' });
+            window.erasmusAdmin.showNotification('User blocked successfully', 'success');
+            loadUsers(); // Reload the list
+        } catch (error) {
+            window.erasmusAdmin.showNotification('Failed to block user', 'error');
+        }
+    }
+}
+
+async function unblockUser(userId) {
+    if (confirm('Are you sure you want to unblock this user?')) {
+        try {
+            await window.erasmusAdmin.apiRequest(`/users/${userId}/unblock`, { method: 'POST' });
+            window.erasmusAdmin.showNotification('User unblocked successfully', 'success');
+            loadUsers(); // Reload the list
+        } catch (error) {
+            window.erasmusAdmin.showNotification('Failed to unblock user', 'error');
+        }
+    }
+}
+
+// Load users on page load
+document.addEventListener('DOMContentLoaded', loadUsers);
+</script>
+{% endblock %}

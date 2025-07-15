@@ -46,7 +46,7 @@ async def lifespan(app: FastAPI):
     logger.info(f"Starting {APP_NAME} v{APP_VERSION}")
     logger.info(f"Environment: {settings.ENVIRONMENT}")
     logger.info(f"Debug mode: {DEBUG}")
-    logger.info(f"Server: {settings.ADMIN_HOST}:{settings.ADMIN_PORT}")
+    logger.info(f"Server: {settings.ADMIN_HOST}:{settings.actual_port}")
     
     yield
     
@@ -140,18 +140,6 @@ async def logs_page(request: Request):
         "logs.html",
         {"request": request, "title": "Audit Logs"}
     )
-
-
-# Health check endpoint
-@app.get("/health", tags=["health"])
-async def health_check():
-    """Health check endpoint."""
-    return {
-        "status": "healthy",
-        "app_name": APP_NAME,
-        "version": APP_VERSION,
-        "debug": DEBUG
-    }
 
 
 # Include API v1 routes
@@ -271,7 +259,7 @@ if __name__ == "__main__":
     uvicorn.run(
         "admin.main:app",
         host=settings.ADMIN_HOST,
-        port=settings.ADMIN_PORT,
+        port=settings.actual_port,
         reload=DEBUG,
         log_level="debug" if DEBUG else "info"
     )

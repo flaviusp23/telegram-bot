@@ -4,7 +4,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from database.database import Base
 import enum
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 # Admin Role Enum
@@ -103,4 +103,4 @@ class AdminSession(Base):
     @property
     def is_expired(self):
         """Check if the session has expired"""
-        return datetime.utcnow() > self.expires_at
+        return datetime.now(timezone.utc) > self.expires_at

@@ -19,5 +19,9 @@ COPY . .
 # Create directory for temp exports
 RUN mkdir -p temp_exports
 
-# Run database migrations then start the bot
-CMD ["sh", "-c", "alembic upgrade head && python run_bot.py"]
+# Copy and make executable the Railway startup script
+COPY railway-start.sh .
+RUN chmod +x railway-start.sh
+
+# Use Railway startup script
+CMD ["./railway-start.sh"]

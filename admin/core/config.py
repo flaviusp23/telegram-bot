@@ -31,8 +31,11 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = Field(default="DEV", description="Application environment (DEV/PROD)")
     
     # Server settings
-    ADMIN_HOST: str = Field(default="127.0.0.1", description="Admin server host")
+    ADMIN_HOST: str = Field(default="0.0.0.0", description="Admin server host")
     ADMIN_PORT: int = Field(default=8000, description="Admin server port")
+    
+    # Railway deployment support
+    PORT: Optional[int] = Field(default=None, description="Railway PORT environment variable")
     
     # Database settings
     DB_HOST: str = Field(default="localhost", description="Database host")
@@ -170,6 +173,11 @@ class Settings(BaseSettings):
     def refresh_token_expire_timedelta(self) -> timedelta:
         """Get refresh token expiration as timedelta."""
         return timedelta(days=self.REFRESH_TOKEN_EXPIRE_DAYS)
+    
+    @property
+    def actual_port(self) -> int:
+        """Get the actual port to use (Railway PORT if available, otherwise ADMIN_PORT)."""
+        return self.PORT if self.PORT is not None else self.ADMIN_PORT
     
     def get_cors_origins(self) -> List[str]:
         """

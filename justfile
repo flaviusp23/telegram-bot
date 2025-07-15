@@ -111,3 +111,32 @@ test:
     @echo "  /export - Export your data"
     @echo "  /health - Check bot health"
     @echo "  /help - Show help"
+
+# Run admin interface only
+admin:
+    source venv/bin/activate && ./venv/bin/python run_admin.py
+
+# Run both bot and admin (like Railway deployment)
+run-all:
+    source venv/bin/activate && bash railway-start.sh
+
+# Test Railway deployment locally with Docker
+docker-test:
+    docker build -t diabetes-monitor .
+    docker run -p 8000:8000 --env-file .env diabetes-monitor
+
+# Railway deployment commands (requires railway CLI)
+railway-login:
+    railway login
+
+railway-link:
+    railway link
+
+railway-deploy:
+    railway up
+
+railway-logs:
+    railway logs
+
+railway-status:
+    railway status

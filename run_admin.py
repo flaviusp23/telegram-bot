@@ -80,7 +80,7 @@ def parse_arguments():
     parser.add_argument(
         "--port",
         type=int,
-        default=settings.ADMIN_PORT,
+        default=settings.actual_port,
         help="Port to bind the server to"
     )
     

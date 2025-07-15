@@ -95,12 +95,6 @@
         color: white;
     }
     
-    .status-info {
-        font-size: 12px;
-        color: #666;
-        font-style: italic;
-    }
-    
     /* Mobile users page */
     @media (max-width: 768px) {
         .users-header {
@@ -238,11 +232,9 @@ async function loadUsers() {
                     <td>
                         <div class="action-buttons">
                             <button class="btn-small btn-view" onclick="viewUser(${user.id})">View</button>
-                            ${user.status === 'active' ? 
-                                `<button class="btn-small btn-block" onclick="blockUser(${user.id})">Block</button>` :
-                                user.status === 'blocked' ?
+                            ${user.status === 'blocked' ? 
                                 `<button class="btn-small btn-unblock" onclick="unblockUser(${user.id})">Unblock</button>` :
-                                `<span class="status-info">Status: ${user.status}</span>`
+                                `<button class="btn-small btn-block" onclick="blockUser(${user.id})">Block</button>`
                             }
                         </div>
                     </td>

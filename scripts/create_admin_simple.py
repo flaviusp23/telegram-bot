@@ -12,10 +12,12 @@ from database.database import SessionLocal
 def create_admin_user():
     """Create a simple admin user for testing"""
     
-    # Create test admin user
-    username = "admin"
-    email = "admin@example.com"
-    password = "Admin123!"
+    import os
+    
+    # Get admin credentials from environment or use defaults
+    username = os.getenv("ADMIN_USERNAME", "admin")
+    email = os.getenv("ADMIN_EMAIL", "admin@example.com")
+    password = os.getenv("ADMIN_PASSWORD", "Admin123!")
     
     db = SessionLocal()
     try:
@@ -44,7 +46,7 @@ def create_admin_user():
         
         print(f"✅ Created admin user '{username}' with email '{email}'")
         print(f"🔑 Password: {password}")
-        print(f"🌐 Access at: http://localhost:8000/login")
+        print(f"🌐 Login at your Railway app URL + /login")
         
     finally:
         db.close()

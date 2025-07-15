@@ -11,6 +11,10 @@ echo "🚀 Starting Diabetes Monitoring System on Railway..."
 echo "📊 Running database migrations..."
 alembic upgrade head
 
+# Create admin user
+echo "👤 Creating admin user..."
+python scripts/create_admin_simple.py
+
 # In Railway, we only expose the admin interface on the main PORT
 # The bot runs in the background
 echo "🤖 Starting Telegram bot in background..."

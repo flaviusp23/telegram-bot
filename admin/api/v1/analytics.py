@@ -613,37 +613,49 @@ async def get_recent_activity(
     """
     Get recent system activity including new users, responses, and admin actions.
     """
-    from admin.models.admin import AuditLog
-    
-    # Get recent responses
-    recent_responses = db.query(
-        Response.id,
-        Response.user_id,
-        Response.question_type,
-        Response.response_value,
-        Response.response_timestamp,
-        User.first_name,
-        User.family_name
-    ).join(User).order_by(
-        Response.response_timestamp.desc()
-    ).limit(limit).all()
-    
-    # Get recent users
-    recent_users = db.query(User).order_by(
-        User.registration_date.desc()
-    ).limit(5).all()
-    
-    # Get recent admin actions
-    recent_admin_actions = db.query(
-        AuditLog.id,
-        AuditLog.action,
-        AuditLog.resource_type,
-        AuditLog.resource_id,
-        AuditLog.timestamp,
-        AdminUser.username
-    ).join(AdminUser).order_by(
-        AuditLog.timestamp.desc()
-    ).limit(limit).all()
+    try:
+        from admin.models.admin import AuditLog, AdminUser as AdminUserModel
+        
+        # Get recent responses
+        recent_responses = db.query(
+            Response.id,
+            Response.user_id,
+            Response.question_type,
+            Response.response_value,
+            Response.response_timestamp,
+            User.first_name,
+            User.family_name
+        ).join(User).order_by(
+            Response.response_timestamp.desc()
+        ).limit(limit).all()
+        
+        # Get recent users
+        recent_users = db.query(User).order_by(
+            User.registration_date.desc()
+        ).limit(5).all()
+        
+        # Get recent admin actions (with error handling)
+        try:
+            recent_admin_actions = db.query(
+                AuditLog.id,
+                AuditLog.action,
+                AuditLog.resource_type,
+                AuditLog.resource_id,
+                AuditLog.timestamp,
+                AdminUserModel.username
+            ).join(AdminUserModel).order_by(
+                AuditLog.timestamp.desc()
+            ).limit(limit).all()
+        except Exception as e:
+            # If admin actions query fails, continue without them
+            recent_admin_actions = []
+    except Exception as e:
+        # Return basic response if queries fail
+        return {
+            "activities": [],
+            "count": 0,
+            "error": str(e)
+        }
     
     # Combine and sort activities by timestamp
     activities = []
@@ -668,7 +680,13 @@ async def get_recent_activity(
     # Add new users from last 24 hours
     yesterday = datetime.now(timezone.utc) - timedelta(days=1)
     for u in recent_users:
-        if u.registration_date >= yesterday:
+        # Handle timezone-naive registration_date
+        reg_date = u.registration_date
+        if reg_date.tzinfo is None:
+            # Assume UTC if no timezone info
+            reg_date = reg_date.replace(tzinfo=timezone.utc)
+        
+        if reg_date >= yesterday:
             activities.append({
                 "type": "new_user",
                 "timestamp": u.registration_date,

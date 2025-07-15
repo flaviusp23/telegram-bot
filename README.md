@@ -157,15 +157,39 @@ diabetes-monitoring/
 │   ├── helpers.py               # Database operations
 │   ├── constants.py             # Database constants and enums
 │   └── session_utils.py         # Session management utilities
+├── admin/                        # Admin panel application
+│   ├── __init__.py
+│   ├── main.py                  # FastAPI application entry point
+│   ├── api/                     # API routes
+│   │   └── v1/                  # API version 1
+│   │       ├── auth.py          # Authentication endpoints
+│   │       ├── users.py         # User management endpoints
+│   │       └── analytics.py     # Analytics endpoints
+│   ├── core/                    # Core functionality
+│   │   ├── config.py            # Admin panel configuration
+│   │   ├── security.py          # JWT and security utilities
+│   │   └── dependencies.py      # FastAPI dependencies
+│   ├── models/                  # Admin-specific models
+│   │   └── admin.py             # Admin user and session models
+│   ├── middleware/              # Custom middleware
+│   │   ├── rate_limit.py        # Rate limiting
+│   │   └── validation.py        # Request validation
+│   ├── static/                  # Static files (CSS, JS)
+│   └── templates/               # HTML templates
+├── docs/
+│   └── ADMIN_GUIDE.md           # Comprehensive admin panel documentation
 ├── scripts/
 │   ├── __init__.py
 │   ├── data_export.py           # Export functionality (modularized)
-│   └── setup_database.py        # Database setup utilities
+│   ├── setup_database.py        # Database setup utilities
+│   ├── create_admin_user.py     # Create admin users for the panel
+│   └── setup_admin.sh           # Admin panel setup script
 ├── alembic/
 │   └── versions/                # Database migrations
 ├── config.py                    # Main configuration file
 ├── run_bot.py                   # Main entry point with validation
 ├── run_export.py                # CLI export tool
+├── run_admin.py                 # Admin panel entry point
 ├── requirements.txt             # Python dependencies
 ├── justfile                     # Command runner
 ├── .env                         # Environment variables (don't commit!)
@@ -225,6 +249,21 @@ just export 1 60
 
 # Or directly:
 python run_export.py <user_id> --days 30
+```
+
+#### Admin Panel
+```bash
+# Create a new admin user
+python scripts/create_admin_user.py
+
+# Start the admin panel
+python run_admin.py
+
+# Run admin panel with custom settings
+python run_admin.py --host 0.0.0.0 --port 8080 --workers 4
+
+# View admin panel help
+python run_admin.py --help
 ```
 
 #### Maintenance
@@ -388,6 +427,61 @@ just run
 - LLM Integration for emotional support
 - Advanced analytics
 - Multi-language support
+
+## 🎛️ Admin Panel
+
+The Diabetes Monitoring System includes a comprehensive web-based administration panel for managing users, monitoring activities, and analyzing data.
+
+### Key Features
+- **User Management**: View, edit, block/unblock users, and monitor their activity
+- **Analytics Dashboard**: Real-time statistics and data visualization
+- **Role-Based Access Control**: Three-tier permission system (Viewer, Admin, Superadmin)
+- **Audit Logging**: Complete activity tracking for compliance and security
+- **RESTful API**: Programmatic access with JWT authentication
+- **Data Export**: Export user data and analytics reports
+
+### Quick Start - Admin Panel
+
+1. **Create Initial Admin User**
+   ```bash
+   python scripts/create_admin_user.py
+   ```
+   You'll be prompted for username, email, and password.
+
+2. **Start the Admin Panel**
+   ```bash
+   # Run with default settings
+   python run_admin.py
+   
+   # Run with custom host/port
+   python run_admin.py --host 0.0.0.0 --port 8080
+   
+   # Run in production mode without auto-reload
+   python run_admin.py --no-reload --workers 4
+   ```
+
+3. **Access the Admin Panel**
+   - Web Interface: `http://localhost:8001`
+   - API Documentation: `http://localhost:8001/api/docs` (development mode only)
+
+4. **Login with Your Admin Credentials**
+   - Use the username and password created in step 1
+   - You'll receive JWT tokens for API access
+
+### Admin Panel Endpoints
+
+#### Web Interface
+- `/` - Home page
+- `/login` - Admin login page
+- `/dashboard` - Main dashboard (requires authentication)
+
+#### API Endpoints (prefix: `/api/v1`)
+- **Authentication**: `/auth/login`, `/auth/logout`, `/auth/refresh`, `/auth/me`
+- **Users**: `/users`, `/users/{id}`, `/users/{id}/responses`
+- **Analytics**: `/analytics/dashboard`, `/analytics/users/stats`, `/analytics/severity-trends`
+- **Admin**: `/admin/users` (manage admin accounts - superadmin only)
+
+For detailed documentation, see [Admin Guide](docs/ADMIN_GUIDE.md).
 
 ## 📈 Data Export
 

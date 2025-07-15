@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h1>Welcome to Erasmus Admin Panel</h1>
+    <p>This is the administrative interface for managing the Erasmus bot system.</p>
+    
+    <div class="features">
+        <div class="feature-card">
+            <h3>User Management</h3>
+            <p>Manage bot users and permissions</p>
+        </div>
+        <div class="feature-card">
+            <h3>Data Analytics</h3>
+            <p>View statistics and generate reports</p>
+        </div>
+        <div class="feature-card">
+            <h3>System Configuration</h3>
+            <p>Configure bot settings and parameters</p>
+        </div>
+    </div>
+    
+    <div class="cta">
+        <a href="/login" class="btn btn-primary">Login to Dashboard</a>
+    </div>
+</div>
+{% endblock %}

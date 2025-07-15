@@ -17,4 +17,5 @@ echo "🤖 Starting Telegram bot in background..."
 python run_bot.py &
 
 echo "🔧 Starting admin interface on port ${PORT:-8000}..."
+export ENVIRONMENT=PROD
 exec python run_admin.py --host 0.0.0.0 --port ${PORT:-8000} --no-reload

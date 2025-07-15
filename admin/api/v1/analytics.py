@@ -10,7 +10,7 @@ This module provides comprehensive analytics endpoints including:
 All endpoints include proper caching for expensive queries.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional, Any
 from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy import func, case, and_, extract, Integer
@@ -39,7 +39,7 @@ class AnalyticsCache:
     def get(self, key: str) -> Optional[Any]:
         """Get cached value if not expired."""
         if key in self._cache:
-            if datetime.now() - self._timestamps[key] < timedelta(seconds=CACHE_TTL_SECONDS):
+            if datetime.now(timezone.utc) - self._timestamps[key] < timedelta(seconds=CACHE_TTL_SECONDS):
                 return self._cache[key]
             else:
                 # Remove expired cache
@@ -50,7 +50,7 @@ class AnalyticsCache:
     def set(self, key: str, value: Any):
         """Set cache value with current timestamp."""
         self._cache[key] = value
-        self._timestamps[key] = datetime.now()
+        self._timestamps[key] = datetime.now(timezone.utc)
     
     def clear(self):
         """Clear all cache entries."""
@@ -89,8 +89,8 @@ async def get_dashboard_analytics(
         if cached_data:
             return cached_data
     
-    # Calculate date boundaries
-    now = datetime.now()
+    # Calculate date boundaries using UTC
+    now = datetime.now(timezone.utc)
     days_ago = now - timedelta(days=days)
     
     # Total users
@@ -211,7 +211,7 @@ async def get_user_statistics(
     if cached_data:
         return cached_data
     
-    now = datetime.now()
+    now = datetime.now(timezone.utc)
     start_date = now - timedelta(days=days)
     
     # Registration trends
@@ -315,7 +315,7 @@ async def get_response_statistics(
     if cached_data:
         return cached_data
     
-    now = datetime.now()
+    now = datetime.now(timezone.utc)
     start_date = now - timedelta(days=days)
     
     # Get all responses in period
@@ -444,7 +444,7 @@ async def get_severity_trends(
     if cached_data:
         return cached_data
     
-    now = datetime.now()
+    now = datetime.now(timezone.utc)
     start_date = now - timedelta(days=days)
     
     # Base query for severity ratings
@@ -666,7 +666,7 @@ async def get_recent_activity(
         })
     
     # Add new users from last 24 hours
-    yesterday = datetime.now() - timedelta(days=1)
+    yesterday = datetime.now(timezone.utc) - timedelta(days=1)
     for u in recent_users:
         if u.registration_date >= yesterday:
             activities.append({

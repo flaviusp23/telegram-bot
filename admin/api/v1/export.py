@@ -1,7 +1,7 @@
 """
 Data export endpoints for admin panel
 """
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 import pandas as pd
 from io import BytesIO
@@ -27,8 +27,8 @@ async def export_responses(
     """
     Export response data in CSV or Excel format
     """
-    # Calculate date range
-    end_date = datetime.now()
+    # Calculate date range using UTC
+    end_date = datetime.now(timezone.utc)
     start_date = end_date - timedelta(days=days)
     
     # Query responses with user info
@@ -76,7 +76,7 @@ async def export_responses(
             output,
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             headers={
-                "Content-Disposition": f"attachment; filename=responses_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+                "Content-Disposition": f"attachment; filename=responses_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.xlsx"
             }
         )
     else:  # CSV
@@ -88,7 +88,7 @@ async def export_responses(
             output,
             media_type="text/csv",
             headers={
-                "Content-Disposition": f"attachment; filename=responses_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+                "Content-Disposition": f"attachment; filename=responses_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.csv"
             }
         )
 
@@ -132,7 +132,7 @@ async def export_users(
             output,
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             headers={
-                "Content-Disposition": f"attachment; filename=users_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+                "Content-Disposition": f"attachment; filename=users_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.xlsx"
             }
         )
     else:  # CSV
@@ -144,6 +144,6 @@ async def export_users(
             output,
             media_type="text/csv",
             headers={
-                "Content-Disposition": f"attachment; filename=users_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+                "Content-Disposition": f"attachment; filename=users_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.csv"
             }
         )

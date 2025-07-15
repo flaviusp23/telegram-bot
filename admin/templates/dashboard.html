@@ -382,8 +382,7 @@ async function loadRecentActivity() {
         
         if (data.activities && data.activities.length > 0) {
             activityLog.innerHTML = data.activities.map(activity => {
-                const time = new Date(activity.timestamp);
-                const timeStr = formatRelativeTime(time);
+                const timeStr = formatRelativeTime(activity.timestamp);
                 
                 // Make user names clickable
                 let text = activity.text;
@@ -414,8 +413,18 @@ async function loadRecentActivity() {
     }
 }
 
-function formatRelativeTime(date) {
+function formatRelativeTime(dateString) {
     const now = new Date();
+    
+    // Parse the date properly, handling potential timezone issues
+    let date = new Date(dateString);
+    
+    // If the date string doesn't have timezone info, treat it as UTC
+    if (!dateString.includes('T') || (!dateString.includes('Z') && !dateString.includes('+'))) {
+        // This is likely a MySQL timestamp without timezone - treat as UTC
+        date = new Date(dateString + 'Z');
+    }
+    
     const diff = now - date;
     
     const seconds = Math.floor(diff / 1000);

@@ -150,13 +150,13 @@ app.include_router(api_v1_router, prefix=settings.API_V1_PREFIX, tags=["api_v1"]
 @app.get("/api/health")
 async def health_check():
     """Simple health check endpoint."""
-    from datetime import datetime
+    from datetime import datetime, timezone
     return {
         "status": "healthy",
         "service": APP_NAME,
         "version": APP_VERSION,
         "environment": settings.ENVIRONMENT,
-        "timestamp": datetime.now().isoformat()
+        "timestamp": datetime.now(timezone.utc).isoformat()
     }
 
 

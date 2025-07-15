@@ -73,7 +73,18 @@ async function logout() {
 
 // Format date for display
 function formatDate(dateString) {
-    const date = new Date(dateString);
+    if (!dateString) return '-';
+    
+    // Parse the date string and ensure it's interpreted correctly
+    let date = new Date(dateString);
+    
+    // If the date string doesn't have timezone info, treat it as UTC
+    if (!dateString.includes('T') || (!dateString.includes('Z') && !dateString.includes('+'))) {
+        // This is likely a MySQL timestamp without timezone - treat as UTC
+        date = new Date(dateString + 'Z');
+    }
+    
+    // Format in user's local timezone
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
 }
 

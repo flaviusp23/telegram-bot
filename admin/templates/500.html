@@ -1,13 +1,13 @@
 {% extends "base.html" %}
 
-{% block title %}Internal Server Error{% endblock %}
+{% block title %}{{ _('errors.500') }}{% endblock %}
 
 {% block content %}
 <div class="container">
     <div class="error-container">
-        <h1>500 - Internal Server Error</h1>
-        <p>Something went wrong on our end. Please try again later.</p>
-        <a href="/" class="btn btn-primary">Go Home</a>
+        <h1>500 - <span data-i18n="errors.500">{{ _('errors.500') }}</span></h1>
+        <p data-i18n="errors.500_message">{{ _('errors.500_message') }}</p>
+        <a href="/" class="btn btn-primary" data-i18n="common.back">{{ _('common.back') }}</a>
     </div>
 </div>
 {% endblock %}

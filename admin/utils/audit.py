@@ -13,7 +13,7 @@ from admin.models.admin import AuditLog
 
 class AuditAction:
     """Standard audit action types"""
-    # User management actions
+    # Patient management actions
     LIST_USERS = "list_users"
     VIEW_USER = "view_user"
     UPDATE_USER = "update_user"
@@ -42,7 +42,7 @@ class AuditAction:
 
 class EntityType:
     """Standard entity types for audit logs"""
-    USER = "user"
+    PATIENT = "patient"
     ADMIN = "admin"
     RESPONSE = "response"
     SESSION = "session"

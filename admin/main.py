@@ -22,6 +22,7 @@ from admin.core.config import settings
 # Import middleware
 from admin.middleware.rate_limit import RateLimitMiddleware
 from admin.middleware.validation import RequestValidationMiddleware
+from admin.i18n.middleware import I18nMiddleware
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -47,9 +48,9 @@ async def lifespan(app: FastAPI):
     logger.info(f"Environment: {settings.ENVIRONMENT}")
     logger.info(f"Debug mode: {DEBUG}")
     logger.info(f"Server: {settings.ADMIN_HOST}:{settings.actual_port}")
-    
+
     yield
-    
+
     # Shutdown
     logger.info("Shutting down application")
 
@@ -71,7 +72,10 @@ app.add_middleware(RateLimitMiddleware)
 # 2. Request validation and security headers
 app.add_middleware(RequestValidationMiddleware)
 
-# 3. CORS middleware
+# 3. Internationalization middleware
+app.add_middleware(I18nMiddleware, default_language="en")
+
+# 4. CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
@@ -83,67 +87,93 @@ app.add_middleware(
 # Mount static files
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
-# Initialize templates
+# Initialize templates with i18n support
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
+
+# Setup i18n for templates - both global and context-based approaches
+from admin.i18n.jinja2 import setup_i18n_jinja2
+setup_i18n_jinja2(templates.env)
 
 
 # Basic HTML routes
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     """Serve the home page."""
-    return templates.TemplateResponse(
-        "index.html",
-        {"request": request, "title": "Home"}
-    )
+    from admin.i18n.jinja2 import create_template_context
+    context = create_template_context(request)
+    context.update({"title": "Home"})
+    return templates.TemplateResponse("index.html", context)
 
 
 @app.get("/login", response_class=HTMLResponse)
 async def login(request: Request):
     """Serve the login page."""
-    return templates.TemplateResponse(
-        "login.html",
-        {"request": request, "title": "Login"}
-    )
+    from admin.i18n.jinja2 import create_template_context
+    context = create_template_context(request)
+    context.update({"title": "Login"})
+    return templates.TemplateResponse("login.html", context)
 
 
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(request: Request):
     """Serve the dashboard page."""
-    return templates.TemplateResponse(
-        "dashboard.html",
-        {"request": request, "title": "Dashboard"}
-    )
+    from admin.i18n.jinja2 import create_template_context
+    context = create_template_context(request)
+    context.update({"title": "Dashboard"})
+    return templates.TemplateResponse("dashboard.html", context)
 
 
 @app.get("/users", response_class=HTMLResponse)
 async def users_page(request: Request):
-    """Serve the users management page."""
-    return templates.TemplateResponse(
-        "users.html",
-        {"request": request, "title": "User Management"}
-    )
+    """Serve the patients management page."""
+    from admin.i18n.jinja2 import create_template_context
+    context = create_template_context(request)
+    context.update({"title": "Patient Management"})
+    return templates.TemplateResponse("users.html", context)
 
 
 @app.get("/user", response_class=HTMLResponse)
 async def user_detail_page(request: Request):
-    """Serve the user detail page."""
-    return templates.TemplateResponse(
-        "user_detail.html",
-        {"request": request, "title": "User Details"}
-    )
+    """Serve the patient detail page (legacy URL for compatibility)."""
+    from admin.i18n.jinja2 import create_template_context
+    context = create_template_context(request)
+    context.update({"title": "Patient Details"})
+    return templates.TemplateResponse("user_detail.html", context)
+
+
+@app.get("/patient", response_class=HTMLResponse)
+async def patient_detail_page(request: Request):
+    """Serve the patient detail page."""
+    from admin.i18n.jinja2 import create_template_context
+    context = create_template_context(request)
+    context.update({"title": "Patient Details"})
+    return templates.TemplateResponse("user_detail.html", context)
+
+
+@app.get("/patient-report", response_class=HTMLResponse)
+async def patient_report_page(request: Request):
+    """Serve the patient report page."""
+    from admin.i18n.jinja2 import create_template_context
+    context = create_template_context(request)
+    context.update({"title": "Patient Report"})
+    return templates.TemplateResponse("patient_report.html", context)
 
 
 @app.get("/logs", response_class=HTMLResponse)
 async def logs_page(request: Request):
     """Serve the audit logs page."""
-    return templates.TemplateResponse(
-        "logs.html",
-        {"request": request, "title": "Audit Logs"}
-    )
+    from admin.i18n.jinja2 import create_template_context
+    context = create_template_context(request)
+    context.update({"title": "Audit Logs"})
+    return templates.TemplateResponse("logs.html", context)
 
 
 # Include API v1 routes
-app.include_router(api_v1_router, prefix=settings.API_V1_PREFIX, tags=["api_v1"])
+app.include_router(
+    api_v1_router, 
+    prefix=settings.API_V1_PREFIX, 
+    tags=["api_v1"]
+)
 
 
 # Health check endpoint
@@ -160,6 +190,7 @@ async def health_check():
     }
 
 
+
 # Error handlers with consistent format
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request: Request, exc: StarletteHTTPException):
@@ -173,10 +204,10 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
                 "type": exc.__class__.__name__
             }
         }
-        
+
         # Add headers if present (e.g., for rate limiting)
         headers = getattr(exc, "headers", {})
-        
+
         return JSONResponse(
             status_code=exc.status_code,
             content=error_response,
@@ -221,7 +252,7 @@ async def not_found_handler(request: Request, exc: Exception):
 async def internal_server_error_handler(request: Request, exc: Exception):
     """Handle 500 errors with consistent format."""
     logger.error(f"Internal server error: {exc}", exc_info=True)
-    
+
     if request.url.path.startswith("/api/"):
         return JSONResponse(
             status_code=500,
@@ -241,20 +272,9 @@ async def internal_server_error_handler(request: Request, exc: Exception):
         )
 
 
-# Additional middleware for logging in debug mode
-# Disabled temporarily due to async issues
-# if DEBUG:
-#     @app.middleware("http")
-#     async def log_requests(request: Request, call_next):
-#         """Log incoming requests in debug mode."""
-#         logger.debug(f"{request.method} {request.url.path}")
-#         response = await call_next(request)
-#         return response
-
-
 if __name__ == "__main__":
     import uvicorn
-    
+
     # Run the application
     uvicorn.run(
         "admin.main:app",

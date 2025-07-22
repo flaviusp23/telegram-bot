@@ -1,12 +1,12 @@
 """
-User management API endpoints for the admin panel.
+Patient management API endpoints for the admin panel.
 
 This module provides endpoints for:
-- Listing users with pagination and filtering
-- Getting user details
-- Updating user information
-- Blocking/unblocking users
-- Viewing user questionnaire responses
+- Listing patients with pagination and filtering
+- Getting patient details
+- Updating patient information
+- Blocking/unblocking patients
+- Viewing patient questionnaire responses
 """
 
 from typing import Optional, List
@@ -33,20 +33,20 @@ router = APIRouter()
 
 
 @router.get("/", response_model=PaginatedUsers)
-async def list_users(
+async def list_patients(
     request: Request,
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
     search: Optional[str] = Query(None, description="Search by name, email, or telegram ID"),
-    status: Optional[str] = Query(None, description="Filter by user status"),
+    status: Optional[str] = Query(None, description="Filter by patient status"),
     registered_from: Optional[datetime] = Query(None, description="Filter by registration date (from)"),
     registered_to: Optional[datetime] = Query(None, description="Filter by registration date (to)"),
-    has_responses: Optional[bool] = Query(None, description="Filter by whether user has responses"),
+    has_responses: Optional[bool] = Query(None, description="Filter by whether patient has responses"),
     admin_user: AdminUser = Depends(require_viewer),
     db: Session = Depends(get_db)
 ):
     """
-    List all users with pagination and filtering.
+    List all patients with pagination and filtering.
     
     Required role: Viewer or higher
     """
@@ -57,9 +57,9 @@ async def list_users(
             detail="Page size cannot exceed 100"
         )
     
-    # Get users with filters
+    # Get patients with filters
     try:
-        users, total = UserService.get_users_with_filters(
+        patients, total = UserService.get_patients_with_filters(
             db=db,
             page=page,
             page_size=page_size,
@@ -70,39 +70,39 @@ async def list_users(
             has_responses=has_responses
         )
     except Exception as e:
-        logger.error(f"Error fetching users: {e}")
+        logger.error(f"Error fetching patients: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error fetching users"
+            detail="Error fetching patients"
         )
     
     # Get response counts
-    user_ids = [user.id for user in users]
-    response_counts = UserService.get_response_counts(db, user_ids)
+    patient_ids = [patient.id for patient in patients]
+    response_counts = UserService.get_response_counts(db, patient_ids)
     
     # Build response
     items = []
-    for user in users:
-        user_response = UserResponse(
-            id=user.id,
-            first_name=user.first_name,
-            family_name=user.family_name,
-            telegram_id=user.telegram_id,
-            email=user.email,
-            phone_number=user.phone_number,
-            status=user.status.value,
-            registration_date=user.registration_date,
-            last_interaction=user.last_interaction,
-            response_count=response_counts.get(user.id, 0)
+    for patient in patients:
+        patient_response = UserResponse(
+            id=patient.id,
+            first_name=patient.first_name,
+            family_name=patient.family_name,
+            telegram_id=patient.telegram_id,
+            email=patient.email,
+            phone_number=patient.phone_number,
+            status=patient.status.value,
+            registration_date=patient.registration_date,
+            last_interaction=patient.last_interaction,
+            response_count=response_counts.get(patient.id, 0)
         )
-        items.append(user_response)
+        items.append(patient_response)
     
     # Log the action
     await create_audit_log(
         db=db,
         admin_id=admin_user.id,
         action=AuditAction.LIST_USERS,
-        entity_type=EntityType.USER,
+        entity_type=EntityType.PATIENT,
         changes={"filters": {
             "search": search,
             "status": status,
@@ -125,29 +125,29 @@ async def list_users(
 
 
 @router.get("/{user_id}", response_model=UserDetailResponse)
-async def get_user(
+async def get_patient(
     request: Request,
     user_id: int,
     admin_user: AdminUser = Depends(require_viewer),
     db: Session = Depends(get_db)
 ):
     """
-    Get specific user details including recent responses.
+    Get specific patient details including recent responses.
     
     Required role: Viewer or higher
     """
-    # Get user with details
-    user = UserService.get_user_with_details(db, user_id)
+    # Get patient with details
+    patient = UserService.get_patient_with_details(db, user_id)
     
-    if not user:
+    if not patient:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
+            detail="Patient not found"
         )
     
     # Get recent responses
     recent_responses = []
-    for response in sorted(user.responses, key=lambda r: r.response_timestamp, reverse=True)[:10]:
+    for response in sorted(patient.responses, key=lambda r: r.response_timestamp, reverse=True)[:10]:
         recent_responses.append({
             "id": response.id,
             "question_type": response.question_type,
@@ -160,29 +160,29 @@ async def get_user(
         db=db,
         admin_id=admin_user.id,
         action=AuditAction.VIEW_USER,
-        entity_type=EntityType.USER,
+        entity_type=EntityType.PATIENT,
         entity_id=user_id,
         request=request
     )
     
     return UserDetailResponse(
-        id=user.id,
-        first_name=user.first_name,
-        family_name=user.family_name,
-        telegram_id=user.telegram_id,
-        email=user.email,
-        phone_number=user.phone_number,
-        status=user.status.value,
-        registration_date=user.registration_date,
-        last_interaction=user.last_interaction,
-        response_count=len(user.responses),
-        interaction_count=len(user.interactions),
+        id=patient.id,
+        first_name=patient.first_name,
+        family_name=patient.family_name,
+        telegram_id=patient.telegram_id,
+        email=patient.email,
+        phone_number=patient.phone_number,
+        status=patient.status.value,
+        registration_date=patient.registration_date,
+        last_interaction=patient.last_interaction,
+        response_count=len(patient.responses),
+        interaction_count=len(patient.interactions),
         recent_responses=recent_responses
     )
 
 
 @router.put("/{user_id}", response_model=UserResponse)
-async def update_user(
+async def update_patient(
     request: Request,
     user_id: int,
     user_update: UserUpdate,
@@ -190,16 +190,16 @@ async def update_user(
     db: Session = Depends(get_db)
 ):
     """
-    Update user information.
+    Update patient information.
     
     Required role: Admin or higher
     """
-    # Get user
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
+    # Get patient
+    patient = db.query(User).filter(User.id == user_id).first()
+    if not patient:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
+            detail="Patient not found"
         )
     
     # Validate update data
@@ -209,11 +209,11 @@ async def update_user(
             detail="Invalid email format"
         )
     
-    # Update user and get changes
+    # Update patient and get changes
     try:
-        changes = UserService.update_user(
+        changes = UserService.update_patient(
             db=db,
-            user=user,
+            patient=patient,
             first_name=user_update.first_name,
             family_name=user_update.family_name,
             email=user_update.email,
@@ -221,10 +221,10 @@ async def update_user(
             status=user_update.status
         )
     except Exception as e:
-        logger.error(f"Error updating user {user_id}: {e}")
+        logger.error(f"Error updating patient {user_id}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error updating user"
+            detail="Error updating patient"
         )
     
     # Log the action
@@ -232,7 +232,7 @@ async def update_user(
         db=db,
         admin_id=admin_user.id,
         action=AuditAction.UPDATE_USER,
-        entity_type=EntityType.USER,
+        entity_type=EntityType.PATIENT,
         entity_id=user_id,
         changes=changes,
         request=request
@@ -242,53 +242,53 @@ async def update_user(
     response_count = db.query(Response).filter(Response.user_id == user_id).count()
     
     return UserResponse(
-        id=user.id,
-        first_name=user.first_name,
-        family_name=user.family_name,
-        telegram_id=user.telegram_id,
-        email=user.email,
-        phone_number=user.phone_number,
-        status=user.status.value,
-        registration_date=user.registration_date,
-        last_interaction=user.last_interaction,
+        id=patient.id,
+        first_name=patient.first_name,
+        family_name=patient.family_name,
+        telegram_id=patient.telegram_id,
+        email=patient.email,
+        phone_number=patient.phone_number,
+        status=patient.status.value,
+        registration_date=patient.registration_date,
+        last_interaction=patient.last_interaction,
         response_count=response_count
     )
 
 
 @router.post("/{user_id}/block", response_model=UserResponse)
-async def block_user(
+async def block_patient(
     request: Request,
     user_id: int,
     admin_user: AdminUser = Depends(require_admin),
     db: Session = Depends(get_db)
 ):
     """
-    Block a user.
+    Block a patient.
     
     Required role: Admin or higher
     """
-    # Get user
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
+    # Get patient
+    patient = db.query(User).filter(User.id == user_id).first()
+    if not patient:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
+            detail="Patient not found"
         )
     
-    if user.status == UserStatus.blocked:
+    if patient.status == UserStatus.blocked:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="User is already blocked"
+            detail="Patient is already blocked"
         )
     
-    # Block user
+    # Block patient
     try:
-        old_status = UserService.block_user(db, user)
+        old_status = UserService.block_patient(db, patient)
     except Exception as e:
-        logger.error(f"Error blocking user {user_id}: {e}")
+        logger.error(f"Error blocking patient {user_id}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error blocking user"
+            detail="Error blocking patient"
         )
     
     # Log the action
@@ -296,7 +296,7 @@ async def block_user(
         db=db,
         admin_id=admin_user.id,
         action=AuditAction.BLOCK_USER,
-        entity_type=EntityType.USER,
+        entity_type=EntityType.PATIENT,
         entity_id=user_id,
         changes={"status": {"old": old_status, "new": "blocked"}},
         request=request
@@ -306,53 +306,53 @@ async def block_user(
     response_count = db.query(Response).filter(Response.user_id == user_id).count()
     
     return UserResponse(
-        id=user.id,
-        first_name=user.first_name,
-        family_name=user.family_name,
-        telegram_id=user.telegram_id,
-        email=user.email,
-        phone_number=user.phone_number,
-        status=user.status.value,
-        registration_date=user.registration_date,
-        last_interaction=user.last_interaction,
+        id=patient.id,
+        first_name=patient.first_name,
+        family_name=patient.family_name,
+        telegram_id=patient.telegram_id,
+        email=patient.email,
+        phone_number=patient.phone_number,
+        status=patient.status.value,
+        registration_date=patient.registration_date,
+        last_interaction=patient.last_interaction,
         response_count=response_count
     )
 
 
 @router.post("/{user_id}/unblock", response_model=UserResponse)
-async def unblock_user(
+async def unblock_patient(
     request: Request,
     user_id: int,
     admin_user: AdminUser = Depends(require_admin),
     db: Session = Depends(get_db)
 ):
     """
-    Unblock a user.
+    Unblock a patient.
     
     Required role: Admin or higher
     """
-    # Get user
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
+    # Get patient
+    patient = db.query(User).filter(User.id == user_id).first()
+    if not patient:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
+            detail="Patient not found"
         )
     
-    if user.status != UserStatus.blocked:
+    if patient.status != UserStatus.blocked:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="User is not blocked"
+            detail="Patient is not blocked"
         )
     
-    # Unblock user
+    # Unblock patient
     try:
-        old_status = UserService.unblock_user(db, user)
+        old_status = UserService.unblock_patient(db, patient)
     except Exception as e:
-        logger.error(f"Error unblocking user {user_id}: {e}")
+        logger.error(f"Error unblocking patient {user_id}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error unblocking user"
+            detail="Error unblocking patient"
         )
     
     # Log the action
@@ -360,7 +360,7 @@ async def unblock_user(
         db=db,
         admin_id=admin_user.id,
         action=AuditAction.UNBLOCK_USER,
-        entity_type=EntityType.USER,
+        entity_type=EntityType.PATIENT,
         entity_id=user_id,
         changes={"status": {"old": old_status, "new": "active"}},
         request=request
@@ -370,15 +370,15 @@ async def unblock_user(
     response_count = db.query(Response).filter(Response.user_id == user_id).count()
     
     return UserResponse(
-        id=user.id,
-        first_name=user.first_name,
-        family_name=user.family_name,
-        telegram_id=user.telegram_id,
-        email=user.email,
-        phone_number=user.phone_number,
-        status=user.status.value,
-        registration_date=user.registration_date,
-        last_interaction=user.last_interaction,
+        id=patient.id,
+        first_name=patient.first_name,
+        family_name=patient.family_name,
+        telegram_id=patient.telegram_id,
+        email=patient.email,
+        phone_number=patient.phone_number,
+        status=patient.status.value,
+        registration_date=patient.registration_date,
+        last_interaction=patient.last_interaction,
         response_count=response_count
     )
 
@@ -395,16 +395,16 @@ async def get_user_responses(
     db: Session = Depends(get_db)
 ):
     """
-    Get user's questionnaire responses.
+    Get patient's questionnaire responses.
     
     Required role: Viewer or higher
     """
-    # Check if user exists
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
+    # Check if patient exists
+    patient = db.query(User).filter(User.id == user_id).first()
+    if not patient:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
+            detail="Patient not found"
         )
     
     # Validate limit
@@ -416,7 +416,7 @@ async def get_user_responses(
     
     # Get responses
     try:
-        responses = UserService.get_user_responses(
+        responses = UserService.get_patient_responses(
             db=db,
             user_id=user_id,
             question_type=question_type,
@@ -425,10 +425,10 @@ async def get_user_responses(
             limit=limit
         )
     except Exception as e:
-        logger.error(f"Error fetching user responses for {user_id}: {e}")
+        logger.error(f"Error fetching patient responses for {user_id}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error fetching user responses"
+            detail="Error fetching patient responses"
         )
     
     # Log the action
@@ -436,7 +436,7 @@ async def get_user_responses(
         db=db,
         admin_id=admin_user.id,
         action=AuditAction.VIEW_USER_RESPONSES,
-        entity_type=EntityType.USER,
+        entity_type=EntityType.PATIENT,
         entity_id=user_id,
         changes={"filters": {
             "question_type": question_type,

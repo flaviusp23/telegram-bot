@@ -3,77 +3,77 @@
 {% block content %}
 <div class="container">
     <div class="dashboard-header">
-        <h1>Admin Dashboard</h1>
-        <button class="btn btn-primary" onclick="loadDashboardData(true)" title="Refresh data">
-            🔄 Refresh
+        <h1 data-i18n="dashboard.title">{{ _('dashboard.title') }}</h1>
+        <button class="btn btn-primary" onclick="loadDashboardData(true)" title="{{ _('common.refresh_data') }}" data-i18n="common.refresh">
+            🔄 {{ _('common.refresh') }}
         </button>
     </div>
     
     <div class="dashboard-grid">
         <div class="dashboard-card">
-            <h3>Total Users</h3>
+            <h3 data-i18n="dashboard.total_patients">{{ _('dashboard.total_patients') }}</h3>
             <p class="metric">-</p>
         </div>
         <div class="dashboard-card">
-            <h3>Active Users (30d)</h3>
+            <h3 data-i18n="dashboard.active_patients">{{ _('dashboard.active_patients') }}</h3>
             <p class="metric">-</p>
         </div>
         <div class="dashboard-card">
-            <h3>Total Responses</h3>
+            <h3 data-i18n="dashboard.total_responses">{{ _('dashboard.total_responses') }}</h3>
             <p class="metric">-</p>
         </div>
         <div class="dashboard-card">
-            <h3>Distress Rate</h3>
+            <h3 data-i18n="dashboard.distress_rate">{{ _('dashboard.distress_rate') }}</h3>
             <p class="metric">-</p>
         </div>
     </div>
     
     <div class="dashboard-sections">
         <section class="dashboard-section">
-            <h2>Quick Actions</h2>
+            <h2 data-i18n="dashboard.quick_actions">{{ _('dashboard.quick_actions') }}</h2>
             <div class="action-buttons">
-                <button class="btn btn-secondary" onclick="exportData()">Export Data</button>
-                <button class="btn btn-secondary" onclick="viewUsers()">View Users</button>
-                <button class="btn btn-secondary" onclick="viewLogs()">View Logs</button>
+                <button class="btn btn-secondary" onclick="exportData()" data-i18n="dashboard.export_data">{{ _('dashboard.export_data') }}</button>
+                <button class="btn btn-secondary" onclick="viewPatients()" data-i18n="dashboard.view_patients">{{ _('dashboard.view_patients') }}</button>
+                <button class="btn btn-secondary" onclick="viewLogs()" data-i18n="dashboard.view_logs">{{ _('dashboard.view_logs') }}</button>
             </div>
         </section>
         
         <section class="dashboard-section">
-            <h2>Recent Activity</h2>
+            <h2 data-i18n="dashboard.recent_activity">{{ _('dashboard.recent_activity') }}</h2>
             <div id="activity-log">
-                <p>Loading activity log...</p>
+                <p data-i18n="dashboard.loading_activity">{{ _('dashboard.loading_activity') }}</p>
             </div>
         </section>
         
         <section class="dashboard-section">
-            <h2>Key Insights</h2>
+            <h2 data-i18n="dashboard.key_insights">{{ _('dashboard.key_insights') }}</h2>
             <div id="response-stats">
                 <div class="stats-grid">
                     <div class="stat-item">
                         <div class="stat-main">
-                            <span class="stat-label">Average Distress Level</span>
+                            <span class="stat-label" data-i18n="dashboard.avg_distress_level">{{ _('dashboard.avg_distress_level') }}</span>
                             <span class="stat-value" id="avg-severity">-</span>
                         </div>
-                        <div class="stat-description">
-                            How severe users rate their distress (1=Low, 5=High)
+                        <div class="stat-description" data-i18n="dashboard.distress_description">
+                            {{ _('dashboard.distress_description') }}
                         </div>
                     </div>
                     <div class="stat-item">
                         <div class="stat-main">
-                            <span class="stat-label">User Engagement</span>
+                            <span class="stat-label" data-i18n="dashboard.patient_engagement">{{ _('dashboard.patient_engagement') }}</span>
                             <span class="stat-value" id="response-rate">-</span>
                         </div>
-                        <div class="stat-description">
-                            Daily check-ins completed (expecting 3 per day)
+                        <div class="stat-description" data-i18n="dashboard.engagement_description">
+                            {{ _('dashboard.engagement_description') }}
                         </div>
                     </div>
                     <div class="stat-item">
                         <div class="stat-main">
-                            <span class="stat-label">New Users This Month</span>
-                            <span class="stat-value" id="user-growth">-</span>
+                            <span class="stat-label" data-i18n="dashboard.new_patients_month">{{ _('dashboard.new_patients_month') }}</span>
+                            <span class="stat-value" id="patient-growth">-</span>
                         </div>
-                        <div class="stat-description">
-                            Growth compared to previous month
+                        <div class="stat-description" data-i18n="dashboard.growth_description">
+                            {{ _('dashboard.growth_description') }}
                         </div>
                     </div>
                 </div>
@@ -198,13 +198,13 @@
     color: #6c757d;
 }
 
-.activity-user-link {
+.activity-patient-link {
     color: #007bff;
     text-decoration: none;
     cursor: pointer;
 }
 
-.activity-user-link:hover {
+.activity-patient-link:hover {
     text-decoration: underline;
 }
 
@@ -281,6 +281,16 @@
 
 {% block extra_js %}
 <script>
+// Make translations available to JavaScript
+window.dashboardTranslations = {
+    noRecentActivity: "{{ _('dashboard.no_recent_activity') }}",
+    failedLoadActivity: "{{ _('dashboard.failed_load_activity') }}",
+    lastUpdated: "{{ _('dashboard.last_updated') }}",
+    exportExcelQuestion: "{{ _('dashboard.export_excel_question') }}",
+    exportDaysQuestion: "{{ _('dashboard.export_days_question') }}",
+    exportFailed: "{{ _('dashboard.export_failed') }}",
+    exportDataFailed: "{{ _('dashboard.export_data_failed') }}"
+};
 function createUpdateIndicator() {
     const indicator = document.createElement('div');
     indicator.id = 'update-indicator';
@@ -312,13 +322,13 @@ async function loadDashboardData(fresh = false) {
             let severityIndicator = '';
             
             if (avgSeverity <= 2) {
-                severityIndicator = ' 😊 Low';
+                severityIndicator = ' 😊 ' + window.erasmusAdmin.translate('dashboard.severity_levels.low');
                 document.getElementById('avg-severity').style.color = '#28a745';
             } else if (avgSeverity <= 3.5) {
-                severityIndicator = ' 😐 Moderate';
+                severityIndicator = ' 😐 ' + window.erasmusAdmin.translate('dashboard.severity_levels.moderate');
                 document.getElementById('avg-severity').style.color = '#ffc107';
             } else {
-                severityIndicator = ' 😟 High';
+                severityIndicator = ' 😟 ' + window.erasmusAdmin.translate('dashboard.severity_levels.high');
                 document.getElementById('avg-severity').style.color = '#dc3545';
             }
             document.getElementById('avg-severity').textContent = severityText + severityIndicator;
@@ -327,44 +337,44 @@ async function loadDashboardData(fresh = false) {
             const responseRate = data.metrics.response_rate;
             let engagementText = '';
             if (responseRate >= 90) {
-                engagementText = responseRate.toFixed(0) + '% 🎯 Excellent!';
+                engagementText = responseRate.toFixed(0) + '% 🎯 ' + window.erasmusAdmin.translate('dashboard.engagement_levels.excellent');
                 document.getElementById('response-rate').style.color = '#28a745';
             } else if (responseRate >= 70) {
-                engagementText = responseRate.toFixed(0) + '% 👍 Good';
+                engagementText = responseRate.toFixed(0) + '% 👍 ' + window.erasmusAdmin.translate('dashboard.engagement_levels.good');
                 document.getElementById('response-rate').style.color = '#28a745';
             } else if (responseRate >= 50) {
-                engagementText = responseRate.toFixed(0) + '% 📊 Fair';
+                engagementText = responseRate.toFixed(0) + '% 📊 ' + window.erasmusAdmin.translate('dashboard.engagement_levels.fair');
                 document.getElementById('response-rate').style.color = '#ffc107';
             } else if (responseRate >= 30) {
-                engagementText = responseRate.toFixed(0) + '% ⚠️ Low';
+                engagementText = responseRate.toFixed(0) + '% ⚠️ ' + window.erasmusAdmin.translate('dashboard.engagement_levels.low');
                 document.getElementById('response-rate').style.color = '#ff9800';
             } else {
-                engagementText = responseRate.toFixed(0) + '% 📉 Very Low';
+                engagementText = responseRate.toFixed(0) + '% 📉 ' + window.erasmusAdmin.translate('dashboard.engagement_levels.very_low');
                 document.getElementById('response-rate').style.color = '#dc3545';
             }
             document.getElementById('response-rate').textContent = engagementText;
             
-            // User growth with context
+            // Patient growth with context
             const growth = data.metrics.user_growth_rate;
             let growthText = '';
             if (growth > 0) {
                 growthText = '+' + growth.toFixed(0) + '% 📈';
-                document.getElementById('user-growth').style.color = '#28a745';
+                document.getElementById('patient-growth').style.color = '#28a745';
             } else if (growth === 0) {
-                growthText = 'No change 📊';
-                document.getElementById('user-growth').style.color = '#6c757d';
+                growthText = window.erasmusAdmin.translate('dashboard.growth_status.no_change') + ' 📊';
+                document.getElementById('patient-growth').style.color = '#6c757d';
             } else {
                 growthText = growth.toFixed(0) + '% 📉';
-                document.getElementById('user-growth').style.color = '#dc3545';
+                document.getElementById('patient-growth').style.color = '#dc3545';
             }
-            document.getElementById('user-growth').textContent = growthText;
+            document.getElementById('patient-growth').textContent = growthText;
         }
         console.log('Dashboard data loaded:', data);
         
         // Show update indicator
         const updateTime = new Date().toLocaleTimeString();
         const indicator = document.getElementById('update-indicator') || createUpdateIndicator();
-        indicator.textContent = `Last updated: ${updateTime}`;
+        indicator.textContent = `${window.dashboardTranslations.lastUpdated}: ${updateTime}`;
         indicator.style.opacity = '1';
         setTimeout(() => indicator.style.opacity = '0.5', 1000);
         
@@ -384,12 +394,12 @@ async function loadRecentActivity() {
             activityLog.innerHTML = data.activities.map(activity => {
                 const timeStr = formatRelativeTime(activity.timestamp);
                 
-                // Make user names clickable
+                // Make patient names clickable
                 let text = activity.text;
                 if (activity.user_id && activity.type !== 'admin_action') {
                     text = text.replace(
                         /^([^:]+)/,
-                        `<a href="/user?id=${activity.user_id}" class="activity-user-link">$1</a>`
+                        `<a href="/patient?id=${activity.user_id}" class="activity-patient-link">$1</a>`
                     );
                 }
                 
@@ -404,12 +414,12 @@ async function loadRecentActivity() {
                 `;
             }).join('');
         } else {
-            activityLog.innerHTML = '<div class="no-activity">No recent activity</div>';
+            activityLog.innerHTML = `<div class="no-activity" data-i18n="dashboard.no_recent_activity">${window.dashboardTranslations.noRecentActivity}</div>`;
         }
     } catch (error) {
         console.error('Failed to load recent activity:', error);
         document.getElementById('activity-log').innerHTML = 
-            '<div class="no-activity">Failed to load activity</div>';
+            `<div class="no-activity" data-i18n="dashboard.failed_load_activity">${window.dashboardTranslations.failedLoadActivity}</div>`;
     }
 }
 
@@ -433,20 +443,23 @@ function formatRelativeTime(dateString) {
     const days = Math.floor(hours / 24);
     
     if (days > 0) {
-        return `${days} day${days > 1 ? 's' : ''} ago`;
+        const key = days === 1 ? 'common.time.day_ago' : 'common.time.days_ago';
+        return window.erasmusAdmin.translate(key, { days: days });
     } else if (hours > 0) {
-        return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+        const key = hours === 1 ? 'common.time.hour_ago' : 'common.time.hours_ago';
+        return window.erasmusAdmin.translate(key, { hours: hours });
     } else if (minutes > 0) {
-        return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
+        const key = minutes === 1 ? 'common.time.minute_ago' : 'common.time.minutes_ago';
+        return window.erasmusAdmin.translate(key, { minutes: minutes });
     } else {
-        return 'Just now';
+        return window.erasmusAdmin.translate('common.time.just_now');
     }
 }
 
 async function exportData() {
     // Show export options
-    const format = confirm('Export as Excel? (OK for Excel, Cancel for CSV)') ? 'excel' : 'csv';
-    const days = prompt('Export data from last how many days?', '30');
+    const format = confirm(window.dashboardTranslations.exportExcelQuestion) ? 'excel' : 'csv';
+    const days = prompt(window.dashboardTranslations.exportDaysQuestion, '30');
     
     if (days && !isNaN(days)) {
         try {
@@ -468,17 +481,17 @@ async function exportData() {
                 window.URL.revokeObjectURL(url);
                 a.remove();
             } else {
-                alert('Failed to export data');
+                alert(window.dashboardTranslations.exportDataFailed);
             }
         } catch (error) {
             console.error('Export failed:', error);
-            alert('Export failed');
+            alert(window.dashboardTranslations.exportFailed);
         }
     }
 }
 
-function viewUsers() {
-    window.location.href = '/users';
+function viewPatients() {
+    window.location.href = '/users';  // Keep URL same for backward compatibility
 }
 
 function viewLogs() {
@@ -486,7 +499,11 @@ function viewLogs() {
 }
 
 // Load dashboard data on page load and refresh every 30 seconds
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    // Wait for i18n system to be ready
+    if (window.i18n) {
+        await window.i18n.loadTranslations(window.i18n.currentLanguage);
+    }
     loadDashboardData(); // Initial load (can use cache)
     // Refresh every 30 seconds with fresh data
     setInterval(() => loadDashboardData(true), 30000);

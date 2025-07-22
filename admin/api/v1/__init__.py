@@ -12,7 +12,7 @@ from admin.api.v1 import auth, users, analytics, export, audit
 # Include the auth router (prefix already defined in auth.py)
 router.include_router(auth.router)
 # Include the users router
-router.include_router(users.router, prefix="/users", tags=["users"])
+router.include_router(users.router, prefix="/users", tags=["patients"])
 # Include the analytics router
 router.include_router(analytics.router, prefix="/analytics", tags=["analytics"])
 # Include the export router
@@ -36,7 +36,7 @@ async def api_v1_root():
                 "me": "/api/v1/auth/me",
                 "change-password": "/api/v1/auth/change-password"
             },
-            "users": {
+            "patients": {
                 "list": "GET /api/v1/users",
                 "get": "GET /api/v1/users/{id}",
                 "update": "PUT /api/v1/users/{id}",
@@ -46,7 +46,7 @@ async def api_v1_root():
             },
             "analytics": {
                 "dashboard": "GET /api/v1/analytics/dashboard",
-                "user_stats": "GET /api/v1/analytics/users/stats",
+                "patient_stats": "GET /api/v1/analytics/users/stats",
                 "response_stats": "GET /api/v1/analytics/responses/stats",
                 "severity_trends": "GET /api/v1/analytics/severity-trends",
                 "clear_cache": "POST /api/v1/analytics/cache/clear"

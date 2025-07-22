@@ -1,27 +1,28 @@
 {% extends "base.html" %}
 
+
 {% block content %}
 <div class="container">
-    <h1>Welcome to Admin Panel</h1>
-    <p>This is the administrative interface for managing the bot system.</p>
+    <h1 data-i18n="common.welcome">{{ _('common.welcome') }} {{ _('nav.admin') }}</h1>
+    <p data-i18n="dashboard.overview">{{ _('dashboard.overview') }}</p>
     
     <div class="features">
         <div class="feature-card">
-            <h3>User Management</h3>
-            <p>Manage bot users and permissions</p>
+            <h3 data-i18n="nav.patients">{{ _('nav.patients') }}</h3>
+            <p data-i18n="patients.list_title">{{ _('patients.list_title') }}</p>
         </div>
         <div class="feature-card">
-            <h3>Data Analytics</h3>
-            <p>View statistics and generate reports</p>
+            <h3 data-i18n="nav.analytics">{{ _('nav.analytics') }}</h3>
+            <p data-i18n="analytics.overview">{{ _('analytics.overview') }}</p>
         </div>
         <div class="feature-card">
-            <h3>System Configuration</h3>
-            <p>Configure bot settings and parameters</p>
+            <h3 data-i18n="nav.system">{{ _('nav.system') }}</h3>
+            <p data-i18n="admin.system_settings">{{ _('admin.system_settings') }}</p>
         </div>
     </div>
     
     <div class="cta">
-        <a href="/login" class="btn btn-primary">Login to Dashboard</a>
+        <a href="/login" class="btn btn-primary" data-i18n="auth.login">{{ _('auth.login') }}</a>
     </div>
 </div>
 {% endblock %}

@@ -1,5 +1,5 @@
 """
-Pydantic schemas for user-related endpoints.
+Pydantic schemas for patient-related endpoints.
 """
 
 from typing import Optional, List, Any
@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field, EmailStr, validator
 
 
 class UserBase(BaseModel):
-    """Base user schema."""
+    """Base patient schema."""
     first_name: str
     family_name: str
     email: Optional[EmailStr] = None
@@ -16,7 +16,7 @@ class UserBase(BaseModel):
 
 
 class UserResponse(UserBase):
-    """User response schema for list views."""
+    """Patient response schema for list views."""
     id: int
     telegram_id: str
     status: str
@@ -29,13 +29,13 @@ class UserResponse(UserBase):
 
 
 class UserDetailResponse(UserResponse):
-    """Detailed user response with additional fields."""
+    """Detailed patient response with additional fields."""
     interaction_count: int = 0
     recent_responses: List[dict] = Field(default_factory=list)
 
 
 class UserUpdate(BaseModel):
-    """User update request schema."""
+    """Patient update request schema."""
     first_name: Optional[str] = Field(None, min_length=1, max_length=100)
     family_name: Optional[str] = Field(None, min_length=1, max_length=100)
     email: Optional[EmailStr] = None
@@ -50,7 +50,7 @@ class UserUpdate(BaseModel):
 
 
 class ResponseModel(BaseModel):
-    """Response model for user questionnaire responses."""
+    """Response model for patient questionnaire responses."""
     id: int
     question_type: str
     response_value: Any
@@ -61,7 +61,7 @@ class ResponseModel(BaseModel):
 
 
 class PaginatedUsers(BaseModel):
-    """Paginated user list response."""
+    """Paginated patient list response."""
     items: List[UserResponse]
     total: int
     page: int

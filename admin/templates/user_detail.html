@@ -2,7 +2,7 @@
 
 {% block extra_css %}
 <style>
-    .user-header {
+    .patient-header {
         background: white;
         padding: 30px;
         border-radius: 8px;
@@ -10,7 +10,7 @@
         margin-bottom: 30px;
     }
     
-    .user-info {
+    .patient-info {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
         gap: 20px;
@@ -146,19 +146,19 @@
         margin-top: 5px;
     }
     
-    /* Mobile user detail page */
+    /* Mobile patient detail page */
     @media (max-width: 768px) {
-        .user-header {
+        .patient-header {
             padding: 20px;
             margin-bottom: 20px;
         }
         
-        .user-header h1 {
+        .patient-header h1 {
             font-size: 1.5rem;
             margin-bottom: 15px;
         }
         
-        .user-info {
+        .patient-info {
             grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
             gap: 15px;
         }
@@ -252,15 +252,15 @@
     }
     
     @media (max-width: 480px) {
-        .user-header {
+        .patient-header {
             padding: 15px;
         }
         
-        .user-header h1 {
+        .patient-header h1 {
             font-size: 1.25rem;
         }
         
-        .user-info {
+        .patient-info {
             grid-template-columns: 1fr;
             gap: 10px;
         }
@@ -307,14 +307,19 @@
 
 {% block content %}
 <div class="container">
-    <button class="btn btn-secondary back-button" onclick="window.location.href='/users'">
-        ← Back to Users
-    </button>
+    <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+        <button class="btn btn-secondary" onclick="window.location.href='/users'" data-i18n="common.back">
+            ← {{ _('common.back') }} to {{ _('patients.title') }}
+        </button>
+        <button class="btn btn-primary" onclick="viewPatientReport()" data-i18n="reports.generate_report">
+            📊 {{ _('reports.generate_report') }}
+        </button>
+    </div>
     
-    <div class="user-header">
-        <h1 id="user-name">Loading...</h1>
-        <div class="user-info" id="user-info">
-            <!-- User info will be populated here -->
+    <div class="patient-header">
+        <h1 id="patient-name" data-i18n="common.loading">{{ _('common.loading') }}</h1>
+        <div class="patient-info" id="patient-info">
+            <!-- Patient info will be populated here -->
         </div>
     </div>
     
@@ -323,31 +328,31 @@
     </div>
     
     <div class="responses-section">
-        <h2>Questionnaire Responses</h2>
+        <h2 data-i18n="responses.title">{{ _('responses.title') }}</h2>
         
         <div class="filters-bar">
             <div class="filter-group">
-                <label>Type:</label>
+                <label data-i18n="responses.filter_by_type">{{ _('responses.filter_by_type') }}:</label>
                 <select id="filter-type" onchange="filterResponses()">
-                    <option value="">All Types</option>
-                    <option value="distress_check">Distress Check</option>
-                    <option value="severity_rating">Severity Rating</option>
+                    <option value="" data-i18n="common.all_types">{{ _('common.all_types') }}</option>
+                    <option value="distress_check" data-i18n="responses.filter_options.distress_check">{{ _('responses.filter_options.distress_check') }}</option>
+                    <option value="severity_rating" data-i18n="responses.filter_options.severity_rating">{{ _('responses.filter_options.severity_rating') }}</option>
                 </select>
             </div>
             
             <div class="filter-group">
-                <label>Date Range:</label>
+                <label data-i18n="responses.date_range">{{ _('responses.date_range') }}:</label>
                 <select id="filter-range" onchange="filterResponses()">
-                    <option value="all">All Time</option>
-                    <option value="today">Today</option>
-                    <option value="week">Last 7 Days</option>
-                    <option value="month">Last 30 Days</option>
+                    <option value="all" data-i18n="common.all_time">{{ _('common.all_time') }}</option>
+                    <option value="today" data-i18n="common.today">{{ _('common.today') }}</option>
+                    <option value="week" data-i18n="reports.last_7_days">{{ _('reports.last_7_days') }}</option>
+                    <option value="month" data-i18n="reports.last_30_days">{{ _('reports.last_30_days') }}</option>
                 </select>
             </div>
             
             <div class="filter-group">
-                <button class="btn btn-primary" onclick="exportUserResponses()">
-                    📥 Export Responses
+                <button class="btn btn-primary" onclick="exportPatientResponses()" data-i18n="responses.export_responses">
+                    📥 {{ _('responses.export_responses') }}
                 </button>
             </div>
         </div>
@@ -355,16 +360,16 @@
         <table class="responses-table">
             <thead>
                 <tr>
-                    <th>Date & Time</th>
-                    <th>Question Type</th>
-                    <th>Response</th>
-                    <th>Notes</th>
+                    <th data-i18n="responses.timestamp">{{ _('responses.timestamp') }}</th>
+                    <th data-i18n="responses.question_type">{{ _('responses.question_type') }}</th>
+                    <th data-i18n="responses.response_value">{{ _('responses.response_value') }}</th>
+                    <th data-i18n="common.notes">{{ _('common.notes') }}</th>
                 </tr>
             </thead>
             <tbody id="responses-tbody">
                 <tr>
-                    <td colspan="4" style="text-align: center; padding: 40px;">
-                        Loading responses...
+                    <td colspan="4" style="text-align: center; padding: 40px;" data-i18n="common.loading">
+                        {{ _('common.loading') }}
                     </td>
                 </tr>
             </tbody>
@@ -375,59 +380,59 @@
 
 {% block extra_js %}
 <script>
-let userId = null;
+let patientId = null;
 let allResponses = [];
-let userData = null;
+let patientData = null;
 
-// Get user ID from URL
+// Get patient ID from URL
 const urlParams = new URLSearchParams(window.location.search);
-userId = urlParams.get('id');
+patientId = urlParams.get('id');
 
-if (!userId) {
-    alert('No user ID provided');
+if (!patientId) {
+    alert(window.erasmusAdmin.translate('errors.generic'));
     window.location.href = '/users';
 }
 
-async function loadUserData() {
+async function loadPatientData() {
     try {
-        // Load user details
-        const userResponse = await window.erasmusAdmin.apiRequest(`/users/${userId}`);
-        userData = userResponse;
+        // Load patient details
+        const patientResponse = await window.erasmusAdmin.apiRequest(`/users/${patientId}`);
+        patientData = patientResponse;
         
         // Update header
-        document.getElementById('user-name').textContent = 
-            `${userData.first_name} ${userData.family_name || ''}`;
+        document.getElementById('patient-name').textContent = 
+            `${patientData.first_name} ${patientData.family_name || ''}`;
         
-        // Update user info
-        document.getElementById('user-info').innerHTML = `
+        // Update patient info
+        document.getElementById('patient-info').innerHTML = `
             <div class="info-item">
-                <span class="info-label">User ID</span>
-                <span class="info-value">${userData.id}</span>
+                <span class="info-label" data-i18n="patients.patient_id">${window.erasmusAdmin.translate('patients.patient_id')}</span>
+                <span class="info-value">${patientData.id}</span>
             </div>
             <div class="info-item">
-                <span class="info-label">Telegram ID</span>
-                <span class="info-value">${userData.telegram_id}</span>
+                <span class="info-label" data-i18n="patients.telegram_id">${window.erasmusAdmin.translate('patients.telegram_id')}</span>
+                <span class="info-value">${patientData.telegram_id}</span>
             </div>
             <div class="info-item">
-                <span class="info-label">Status</span>
-                <span class="info-value status-${userData.status}">${userData.status}</span>
+                <span class="info-label" data-i18n="common.status">${window.erasmusAdmin.translate('common.status')}</span>
+                <span class="info-value status-${patientData.status}">${patientData.status}</span>
             </div>
             <div class="info-item">
-                <span class="info-label">Registration Date</span>
-                <span class="info-value">${window.erasmusAdmin.formatDate(userData.registration_date)}</span>
+                <span class="info-label" data-i18n="patients.registration_date">${window.erasmusAdmin.translate('patients.registration_date')}</span>
+                <span class="info-value">${window.erasmusAdmin.formatDate(patientData.registration_date)}</span>
             </div>
             <div class="info-item">
-                <span class="info-label">Last Interaction</span>
-                <span class="info-value">${userData.last_interaction ? window.erasmusAdmin.formatDate(userData.last_interaction) : 'Never'}</span>
+                <span class="info-label" data-i18n="patients.last_interaction">${window.erasmusAdmin.translate('patients.last_interaction')}</span>
+                <span class="info-value">${patientData.last_interaction ? window.erasmusAdmin.formatDate(patientData.last_interaction) : window.erasmusAdmin.translate('common.never')}</span>
             </div>
             <div class="info-item">
-                <span class="info-label">Total Responses</span>
-                <span class="info-value">${userData.response_count}</span>
+                <span class="info-label" data-i18n="patients.response_count">${window.erasmusAdmin.translate('patients.response_count')}</span>
+                <span class="info-value">${patientData.response_count}</span>
             </div>
         `;
         
         // Load responses
-        const responsesData = await window.erasmusAdmin.apiRequest(`/users/${userId}/responses?limit=1000`);
+        const responsesData = await window.erasmusAdmin.apiRequest(`/users/${patientId}/responses?limit=1000`);
         allResponses = responsesData;
         
         // Calculate stats
@@ -437,8 +442,8 @@ async function loadUserData() {
         displayResponses(allResponses);
         
     } catch (error) {
-        console.error('Failed to load user data:', error);
-        alert('Failed to load user data');
+        console.error('Failed to load patient data:', error);
+        alert(window.erasmusAdmin.translate('errors.generic'));
         window.location.href = '/users';
     }
 }
@@ -462,19 +467,19 @@ function calculateStats() {
     document.getElementById('stats-cards').innerHTML = `
         <div class="stat-card">
             <div class="stat-value">${allResponses.length}</div>
-            <div class="stat-label">Total Responses</div>
+            <div class="stat-label" data-i18n="dashboard.total_responses">${window.erasmusAdmin.translate('dashboard.total_responses')}</div>
         </div>
         <div class="stat-card">
             <div class="stat-value">${distressRate}%</div>
-            <div class="stat-label">Distress Rate</div>
+            <div class="stat-label" data-i18n="dashboard.distress_rate">${window.erasmusAdmin.translate('dashboard.distress_rate')}</div>
         </div>
         <div class="stat-card">
             <div class="stat-value">${avgSeverity}/5</div>
-            <div class="stat-label">Avg Severity</div>
+            <div class="stat-label" data-i18n="analytics.average_severity">${window.erasmusAdmin.translate('analytics.average_severity')}</div>
         </div>
         <div class="stat-card">
             <div class="stat-value">${recentResponses.length}</div>
-            <div class="stat-label">Responses (7d)</div>
+            <div class="stat-label" data-i18n="dashboard.responses_7d">${window.erasmusAdmin.translate('dashboard.responses_7d')}</div>
         </div>
     `;
 }
@@ -487,7 +492,9 @@ function displayResponses(responses) {
             let responseDisplay = '';
             
             if (response.question_type === 'distress_check') {
-                responseDisplay = `<span class="response-value response-${response.response_value}">${response.response_value.toUpperCase()}</span>`;
+                // Translate YES/NO values
+                const translatedValue = window.erasmusAdmin.translate(`responses.response_values.${response.response_value.toLowerCase()}`);
+                responseDisplay = `<span class="response-value response-${response.response_value}">${translatedValue}</span>`;
             } else if (response.question_type === 'severity_rating') {
                 responseDisplay = `<span class="severity-badge severity-${response.response_value}">${response.response_value}/5</span>`;
             } else {
@@ -504,11 +511,21 @@ function displayResponses(responses) {
             `;
         }).join('');
     } else {
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center;">No responses found</td></tr>';
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align: center;" data-i18n="responses.no_responses">${window.erasmusAdmin.translate('responses.no_responses')}</td></tr>`;
     }
 }
 
 function formatQuestionType(type) {
+    // Try to translate the question type
+    const translationKey = `responses.question_types.${type}`;
+    const translated = window.erasmusAdmin.translate(translationKey);
+    
+    // If translation exists, use it; otherwise format the raw type
+    if (translated !== translationKey) {
+        return translated;
+    }
+    
+    // Fallback to formatting the raw type
     return type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 }
 
@@ -550,12 +567,12 @@ function filterResponses() {
     displayResponses(filtered);
 }
 
-async function exportUserResponses() {
+async function exportPatientResponses() {
     try {
-        const format = confirm('Export as Excel? (OK for Excel, Cancel for CSV)') ? 'excel' : 'csv';
+        const format = confirm(window.erasmusAdmin.translate('dashboard.export_excel_question')) ? 'excel' : 'csv';
         const token = localStorage.getItem('access_token');
         
-        const response = await fetch(`/api/v1/export/responses?format=${format}&days=365&user_id=${userId}`, {
+        const response = await fetch(`/api/v1/export/responses?format=${format}&days=365&user_id=${patientId}`, {
             headers: {
                 'Authorization': `Bearer ${token}`
             }
@@ -566,21 +583,31 @@ async function exportUserResponses() {
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `user_${userId}_responses_${new Date().toISOString().split('T')[0]}.${format === 'excel' ? 'xlsx' : 'csv'}`;
+            a.download = `patient_${patientId}_responses_${new Date().toISOString().split('T')[0]}.${format === 'excel' ? 'xlsx' : 'csv'}`;
             document.body.appendChild(a);
             a.click();
             window.URL.revokeObjectURL(url);
             a.remove();
         } else {
-            alert('Failed to export responses');
+            alert(window.erasmusAdmin.translate('dashboard.export_data_failed'));
         }
     } catch (error) {
         console.error('Export failed:', error);
-        alert('Export failed');
+        alert(window.erasmusAdmin.translate('dashboard.export_failed'));
     }
 }
 
-// Load data on page load
-document.addEventListener('DOMContentLoaded', loadUserData);
+function viewPatientReport() {
+    window.location.href = `/patient-report?id=${patientId}`;
+}
+
+// Load data on page load after i18n is ready
+document.addEventListener('DOMContentLoaded', async () => {
+    // Wait for i18n system to be ready
+    if (window.i18n) {
+        await window.i18n.loadTranslations(window.i18n.currentLanguage);
+    }
+    loadPatientData();
+});
 </script>
 {% endblock %}

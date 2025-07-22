@@ -2,14 +2,14 @@
 
 {% block extra_css %}
 <style>
-    .users-header {
+    .patients-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
         margin-bottom: 30px;
     }
     
-    .user-table {
+    .patient-table {
         width: 100%;
         background: white;
         border-radius: 8px;
@@ -17,12 +17,12 @@
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
     
-    .user-table table {
+    .patient-table table {
         width: 100%;
         border-collapse: collapse;
     }
     
-    .user-table th {
+    .patient-table th {
         background-color: #f8f9fa;
         padding: 15px;
         text-align: left;
@@ -31,12 +31,12 @@
         border-bottom: 2px solid #dee2e6;
     }
     
-    .user-table td {
+    .patient-table td {
         padding: 15px;
         border-bottom: 1px solid #dee2e6;
     }
     
-    .user-table tr:hover {
+    .patient-table tr:hover {
         background-color: #f8f9fa;
     }
     
@@ -95,9 +95,9 @@
         color: white;
     }
     
-    /* Mobile users page */
+    /* Mobile patients page */
     @media (max-width: 768px) {
-        .users-header {
+        .patients-header {
             flex-direction: column;
             gap: 1rem;
             align-items: stretch;
@@ -108,22 +108,22 @@
             text-align: center;
         }
         
-        .user-table {
+        .patient-table {
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
         }
         
-        .user-table table {
+        .patient-table table {
             min-width: 600px;
         }
         
-        .user-table th,
-        .user-table td {
+        .patient-table th,
+        .patient-table td {
             padding: 10px 8px;
             font-size: 0.9rem;
         }
         
-        .user-table th {
+        .patient-table th {
             font-size: 0.8rem;
         }
         
@@ -145,12 +145,12 @@
     }
     
     @media (max-width: 480px) {
-        .user-table table {
+        .patient-table table {
             min-width: 500px;
         }
         
-        .user-table th,
-        .user-table td {
+        .patient-table th,
+        .patient-table td {
             padding: 8px 5px;
             font-size: 0.8rem;
         }
@@ -160,13 +160,13 @@
         }
         
         /* Hide less important columns on very small screens */
-        .user-table th:nth-child(3),
-        .user-table td:nth-child(3) {
+        .patient-table th:nth-child(3),
+        .patient-table td:nth-child(3) {
             display: none;
         }
         
-        .user-table th:nth-child(6),
-        .user-table td:nth-child(6) {
+        .patient-table th:nth-child(6),
+        .patient-table td:nth-child(6) {
             display: none;
         }
     }
@@ -175,31 +175,31 @@
 
 {% block content %}
 <div class="container">
-    <div class="users-header">
-        <h1>User Management</h1>
-        <button class="btn btn-primary" onclick="exportUsers()">
-            📥 Export Users
+    <div class="patients-header">
+        <h1 data-i18n="patients.title">{{ _('patients.title') }}</h1>
+        <button class="btn btn-primary" onclick="exportPatients()" data-i18n="dashboard.export_data">
+            📥 {{ _('dashboard.export_data') }}
         </button>
     </div>
     
-    <div class="user-table">
+    <div class="patient-table">
         <table>
             <thead>
                 <tr>
                     <th>ID</th>
-                    <th>Name</th>
-                    <th>Telegram ID</th>
-                    <th>Status</th>
-                    <th>Registration Date</th>
-                    <th>Last Interaction</th>
-                    <th>Responses</th>
-                    <th>Actions</th>
+                    <th data-i18n="patients.first_name">{{ _('patients.first_name') }}</th>
+                    <th data-i18n="patients.telegram_id">{{ _('patients.telegram_id') }}</th>
+                    <th data-i18n="common.status">{{ _('common.status') }}</th>
+                    <th data-i18n="patients.registration_date">{{ _('patients.registration_date') }}</th>
+                    <th data-i18n="patients.last_interaction">{{ _('patients.last_interaction') }}</th>
+                    <th data-i18n="patients.response_count">{{ _('patients.response_count') }}</th>
+                    <th data-i18n="common.actions">{{ _('common.actions') }}</th>
                 </tr>
             </thead>
-            <tbody id="users-tbody">
+            <tbody id="patients-tbody">
                 <tr>
-                    <td colspan="8" style="text-align: center; padding: 40px;">
-                        Loading users...
+                    <td colspan="8" style="text-align: center; padding: 40px;" data-i18n="common.loading">
+                        {{ _('common.loading') }}
                     </td>
                 </tr>
             </tbody>
@@ -210,47 +210,47 @@
 
 {% block extra_js %}
 <script>
-async function loadUsers() {
+async function loadPatients() {
     try {
         const data = await window.erasmusAdmin.apiRequest('/users/');
-        const tbody = document.getElementById('users-tbody');
+        const tbody = document.getElementById('patients-tbody');
         
         if (data.items && data.items.length > 0) {
-            tbody.innerHTML = data.items.map(user => `
+            tbody.innerHTML = data.items.map(patient => `
                 <tr>
-                    <td>${user.id}</td>
-                    <td>${user.first_name} ${user.family_name || ''}</td>
-                    <td>${user.telegram_id}</td>
+                    <td>${patient.id}</td>
+                    <td>${patient.first_name} ${patient.family_name || ''}</td>
+                    <td>${patient.telegram_id}</td>
                     <td>
-                        <span class="status-badge status-${user.status}">
-                            ${user.status}
+                        <span class="status-badge status-${patient.status}">
+                            ${window.erasmusAdmin.translate('patients.' + patient.status)}
                         </span>
                     </td>
-                    <td>${window.erasmusAdmin.formatDate(user.registration_date)}</td>
-                    <td>${user.last_interaction ? window.erasmusAdmin.formatDate(user.last_interaction) : '-'}</td>
-                    <td>${user.response_count}</td>
+                    <td>${window.erasmusAdmin.formatDate(patient.registration_date)}</td>
+                    <td>${patient.last_interaction ? window.erasmusAdmin.formatDate(patient.last_interaction) : window.erasmusAdmin.translate('common.never')}</td>
+                    <td>${patient.response_count}</td>
                     <td>
                         <div class="action-buttons">
-                            <button class="btn-small btn-view" onclick="viewUser(${user.id})">View</button>
-                            ${user.status === 'blocked' ? 
-                                `<button class="btn-small btn-unblock" onclick="unblockUser(${user.id})">Unblock</button>` :
-                                `<button class="btn-small btn-block" onclick="blockUser(${user.id})">Block</button>`
+                            <button class="btn-small btn-view" onclick="viewPatient(${patient.id})" data-i18n="responses.view_patient">${window.erasmusAdmin.translate('responses.view_patient')}</button>
+                            ${patient.status === 'blocked' ? 
+                                `<button class="btn-small btn-unblock" onclick="unblockPatient(${patient.id})" data-i18n="patients.unblock_patient">${window.erasmusAdmin.translate('patients.unblock_patient')}</button>` :
+                                `<button class="btn-small btn-block" onclick="blockPatient(${patient.id})" data-i18n="patients.block_patient">${window.erasmusAdmin.translate('patients.block_patient')}</button>`
                             }
                         </div>
                     </td>
                 </tr>
             `).join('');
         } else {
-            tbody.innerHTML = '<tr><td colspan="8" style="text-align: center;">No users found</td></tr>';
+            tbody.innerHTML = `<tr><td colspan="8" style="text-align: center;" data-i18n="patients.no_patients_found">${window.erasmusAdmin.translate('patients.no_patients_found')}</td></tr>`;
         }
     } catch (error) {
-        console.error('Failed to load users:', error);
-        document.getElementById('users-tbody').innerHTML = 
-            '<tr><td colspan="8" style="text-align: center; color: red;">Failed to load users</td></tr>';
+        console.error('Failed to load patients:', error);
+        document.getElementById('patients-tbody').innerHTML = 
+            `<tr><td colspan="8" style="text-align: center; color: red;" data-i18n="errors.generic">${window.erasmusAdmin.translate('errors.generic')}</td></tr>`;
     }
 }
 
-async function exportUsers() {
+async function exportPatients() {
     try {
         const token = localStorage.getItem('access_token');
         const response = await fetch(`/api/v1/export/users?format=excel`, {
@@ -264,49 +264,55 @@ async function exportUsers() {
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `users_${new Date().toISOString().split('T')[0]}.xlsx`;
+            a.download = `patients_${new Date().toISOString().split('T')[0]}.xlsx`;
             document.body.appendChild(a);
             a.click();
             window.URL.revokeObjectURL(url);
             a.remove();
         } else {
-            alert('Failed to export users');
+            alert(window.erasmusAdmin.translate('dashboard.export_data_failed'));
         }
     } catch (error) {
         console.error('Export failed:', error);
-        alert('Export failed');
+        alert(window.erasmusAdmin.translate('dashboard.export_failed'));
     }
 }
 
-function viewUser(userId) {
-    window.location.href = `/user?id=${userId}`;
+function viewPatient(patientId) {
+    window.location.href = `/patient?id=${patientId}`;
 }
 
-async function blockUser(userId) {
-    if (confirm('Are you sure you want to block this user?')) {
+async function blockPatient(patientId) {
+    if (confirm(window.erasmusAdmin.translate('patients.confirm_block'))) {
         try {
-            await window.erasmusAdmin.apiRequest(`/users/${userId}/block`, { method: 'POST' });
-            window.erasmusAdmin.showNotification('User blocked successfully', 'success');
-            loadUsers(); // Reload the list
+            await window.erasmusAdmin.apiRequest(`/users/${patientId}/block`, { method: 'POST' });
+            window.erasmusAdmin.showNotification(window.erasmusAdmin.translate('patients.patient_blocked'), 'success');
+            loadPatients(); // Reload the list
         } catch (error) {
-            window.erasmusAdmin.showNotification('Failed to block user', 'error');
+            window.erasmusAdmin.showNotification(window.erasmusAdmin.translate('errors.generic'), 'error');
         }
     }
 }
 
-async function unblockUser(userId) {
-    if (confirm('Are you sure you want to unblock this user?')) {
+async function unblockPatient(patientId) {
+    if (confirm(window.erasmusAdmin.translate('patients.confirm_unblock'))) {
         try {
-            await window.erasmusAdmin.apiRequest(`/users/${userId}/unblock`, { method: 'POST' });
-            window.erasmusAdmin.showNotification('User unblocked successfully', 'success');
-            loadUsers(); // Reload the list
+            await window.erasmusAdmin.apiRequest(`/users/${patientId}/unblock`, { method: 'POST' });
+            window.erasmusAdmin.showNotification(window.erasmusAdmin.translate('patients.patient_unblocked'), 'success');
+            loadPatients(); // Reload the list
         } catch (error) {
-            window.erasmusAdmin.showNotification('Failed to unblock user', 'error');
+            window.erasmusAdmin.showNotification(window.erasmusAdmin.translate('errors.generic'), 'error');
         }
     }
 }
 
-// Load users on page load
-document.addEventListener('DOMContentLoaded', loadUsers);
+// Load patients on page load after i18n is ready
+document.addEventListener('DOMContentLoaded', async () => {
+    // Wait for i18n system to be ready
+    if (window.i18n) {
+        await window.i18n.loadTranslations(window.i18n.currentLanguage);
+    }
+    loadPatients();
+});
 </script>
 {% endblock %}

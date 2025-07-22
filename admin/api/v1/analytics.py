@@ -93,11 +93,11 @@ async def get_dashboard_analytics(
     now = datetime.now(timezone.utc)
     days_ago = now - timedelta(days=days)
     
-    # Total users
-    total_users = db.query(func.count(User.id)).scalar()
+    # Total patients
+    total_patients = db.query(func.count(User.id)).scalar()
     
-    # Active users (users with last_interaction in the specified period)
-    active_users = db.query(func.count(User.id)).filter(
+    # Active patients (patients with last_interaction in the specified period)
+    active_patients = db.query(func.count(User.id)).filter(
         User.last_interaction >= days_ago
     ).scalar()
     
@@ -123,21 +123,21 @@ async def get_dashboard_analytics(
     
     distress_percentage = (distress_count / total_distress_checks * 100) if total_distress_checks > 0 else 0
     
-    # User growth rate (compare current period with previous period)
+    # Patient growth rate (compare current period with previous period)
     prev_period_start = days_ago - timedelta(days=days)
     
-    users_current_period = db.query(func.count(User.id)).filter(
+    patients_current_period = db.query(func.count(User.id)).filter(
         User.registration_date >= days_ago
     ).scalar()
     
-    users_prev_period = db.query(func.count(User.id)).filter(
+    patients_prev_period = db.query(func.count(User.id)).filter(
         and_(
             User.registration_date >= prev_period_start,
             User.registration_date < days_ago
         )
     ).scalar()
     
-    growth_rate = ((users_current_period - users_prev_period) / users_prev_period * 100) if users_prev_period > 0 else 0
+    growth_rate = ((patients_current_period - patients_prev_period) / patients_prev_period * 100) if patients_prev_period > 0 else 0
     
     # Average severity rating for recent responses
     avg_severity = db.query(func.avg(func.cast(Response.response_value, Integer))).filter(
@@ -152,8 +152,8 @@ async def get_dashboard_analytics(
         Response.question_type == 'distress_check'  # Count distress checks as primary indicator
     ).scalar()
     
-    # Calculate expected responses (3 per day * number of days * active users)
-    expected_responses = 3 * days * active_users
+    # Calculate expected responses (3 per day * number of days * active patients)
+    expected_responses = 3 * days * active_patients
     
     # Calculate engagement rate as percentage of expected responses
     response_rate = (total_responses_in_period / expected_responses * 100) if expected_responses > 0 else 0
@@ -163,8 +163,8 @@ async def get_dashboard_analytics(
     
     result = {
         "overview": {
-            "total_users": total_users,
-            "active_users": active_users,
+            "total_users": total_patients,
+            "active_users": active_patients,
             "total_responses": total_responses,
             "responses_in_period": responses_in_period
         },
@@ -188,25 +188,25 @@ async def get_dashboard_analytics(
 
 
 @router.get("/users/stats")
-async def get_user_statistics(
+async def get_patient_statistics(
     db: Session = Depends(get_db),
     current_admin: AdminUser = Depends(require_viewer),
     days: int = Query(30, description="Number of days to analyze", ge=1, le=365),
     group_by: str = Query("day", description="Group by: day, week, month", regex="^(day|week|month)$")
 ) -> Dict[str, Any]:
     """
-    Get user statistics including registrations over time and status distribution.
+    Get patient statistics including registrations over time and status distribution.
     
     Returns:
     - Registration trends over time
-    - User status distribution
+    - Patient status distribution
     - Geographic distribution (if available)
     - Activity patterns
     """
     # Permission already checked by dependency
     
     # Check cache
-    cache_key = f"user_stats_{days}_{group_by}"
+    cache_key = f"patient_stats_{days}_{group_by}"
     cached_data = analytics_cache.get(cache_key)
     if cached_data:
         return cached_data
@@ -238,7 +238,7 @@ async def get_user_statistics(
         for r in registrations
     ]
     
-    # User status distribution
+    # Patient status distribution
     status_distribution = db.query(
         User.status,
         func.count(User.id).label('count')
@@ -265,8 +265,8 @@ async def get_user_statistics(
         if hour not in activity_by_hour:
             activity_by_hour[hour] = 0
     
-    # User engagement metrics
-    engaged_users = db.query(func.count(func.distinct(AssistantInteraction.user_id))).filter(
+    # Patient engagement metrics
+    engaged_patients = db.query(func.count(func.distinct(AssistantInteraction.user_id))).filter(
         AssistantInteraction.interaction_timestamp >= start_date
     ).scalar()
     
@@ -275,8 +275,8 @@ async def get_user_statistics(
         "status_distribution": status_data,
         "activity_patterns": {
             "hourly": [{"hour": h, "count": activity_by_hour[h]} for h in sorted(activity_by_hour.keys())],
-            "engaged_users": engaged_users,
-            "engagement_rate": round((engaged_users / total_users * 100), 2) if (total_users := db.query(func.count(User.id)).scalar()) > 0 else 0
+            "engaged_patients": engaged_patients,
+            "engagement_rate": round((engaged_patients / total_patients * 100), 2) if (total_patients := db.query(func.count(User.id)).scalar()) > 0 else 0
         },
         "period": {
             "days": days,
@@ -364,28 +364,28 @@ async def get_response_statistics(
         if day in response_by_dow:
             response_by_dow[day] = count
     
-    # Calculate completion rate (users who completed both questions)
-    users_with_distress = db.query(func.distinct(Response.user_id)).filter(
+    # Calculate completion rate (patients who completed both questions)
+    patients_with_distress = db.query(func.distinct(Response.user_id)).filter(
         Response.response_timestamp >= start_date,
         Response.question_type == 'distress_check'
     ).subquery()
     
-    users_with_severity = db.query(func.distinct(Response.user_id)).filter(
+    patients_with_severity = db.query(func.distinct(Response.user_id)).filter(
         Response.response_timestamp >= start_date,
         Response.question_type == 'severity_rating'
     ).subquery()
     
-    users_completed_both = db.query(func.count(func.distinct(Response.user_id))).filter(
+    patients_completed_both = db.query(func.count(func.distinct(Response.user_id))).filter(
         Response.response_timestamp >= start_date,
-        Response.user_id.in_(users_with_distress),
-        Response.user_id.in_(users_with_severity)
+        Response.user_id.in_(patients_with_distress),
+        Response.user_id.in_(patients_with_severity)
     ).scalar()
     
-    total_responding_users = db.query(func.count(func.distinct(Response.user_id))).filter(
+    total_responding_patients = db.query(func.count(func.distinct(Response.user_id))).filter(
         Response.response_timestamp >= start_date
     ).scalar()
     
-    completion_rate = (users_completed_both / total_responding_users * 100) if total_responding_users > 0 else 0
+    completion_rate = (patients_completed_both / total_responding_patients * 100) if total_responding_patients > 0 else 0
     
     result = {
         "distress_analysis": {
@@ -404,8 +404,8 @@ async def get_response_statistics(
                 for day in days_of_week
             ],
             "completion_rate": round(completion_rate, 2),
-            "total_responding_users": total_responding_users,
-            "users_completed_both": users_completed_both
+            "total_responding_patients": total_responding_patients,
+            "patients_completed_both": patients_completed_both
         },
         "period": {
             "days": days,
@@ -480,26 +480,26 @@ async def get_severity_trends(
         for row in daily_severity
     ]
     
-    # Severity level transitions (how users move between severity levels)
+    # Severity level transitions (how patients move between severity levels)
     if not user_id:
-        # Get pairs of consecutive responses for each user
+        # Get pairs of consecutive responses for each patient
         transitions = defaultdict(lambda: defaultdict(int))
         
-        users_with_multiple = db.query(Response.user_id).filter(
+        patients_with_multiple = db.query(Response.user_id).filter(
             Response.response_timestamp >= start_date,
             Response.question_type == 'severity_rating'
         ).group_by(Response.user_id).having(func.count(Response.id) > 1).all()
         
-        for (uid,) in users_with_multiple:
-            user_responses = db.query(Response).filter(
+        for (uid,) in patients_with_multiple:
+            patient_responses = db.query(Response).filter(
                 Response.user_id == uid,
                 Response.response_timestamp >= start_date,
                 Response.question_type == 'severity_rating'
             ).order_by(Response.response_timestamp).all()
             
-            for i in range(len(user_responses) - 1):
-                from_level = int(user_responses[i].response_value)
-                to_level = int(user_responses[i + 1].response_value)
+            for i in range(len(patient_responses) - 1):
+                from_level = int(patient_responses[i].response_value)
+                to_level = int(patient_responses[i + 1].response_value)
                 transitions[from_level][to_level] += 1
     
         # Convert transitions to list format
@@ -611,7 +611,7 @@ async def get_recent_activity(
     limit: int = Query(10, description="Number of activities to return", ge=1, le=50)
 ) -> Dict[str, Any]:
     """
-    Get recent system activity including new users, responses, and admin actions.
+    Get recent system activity including new patients, responses, and admin actions.
     """
     try:
         from admin.models.admin import AuditLog, AdminUser as AdminUserModel
@@ -629,8 +629,8 @@ async def get_recent_activity(
             Response.response_timestamp.desc()
         ).limit(limit).all()
         
-        # Get recent users
-        recent_users = db.query(User).order_by(
+        # Get recent patients
+        recent_patients = db.query(User).order_by(
             User.registration_date.desc()
         ).limit(5).all()
         
@@ -677,22 +677,22 @@ async def get_recent_activity(
             "severity": "info" if r.response_value == "no" else "warning"
         })
     
-    # Add new users from last 24 hours
+    # Add new patients from last 24 hours
     yesterday = datetime.now(timezone.utc) - timedelta(days=1)
-    for u in recent_users:
+    for p in recent_patients:
         # Handle timezone-naive registration_date
-        reg_date = u.registration_date
+        reg_date = p.registration_date
         if reg_date.tzinfo is None:
             # Assume UTC if no timezone info
             reg_date = reg_date.replace(tzinfo=timezone.utc)
         
         if reg_date >= yesterday:
             activities.append({
-                "type": "new_user",
-                "timestamp": u.registration_date,
-                "text": f"New user registered: {u.first_name} {u.family_name or ''}",
+                "type": "new_patient",
+                "timestamp": p.registration_date,
+                "text": f"New patient registered: {p.first_name} {p.family_name or ''}",
                 "icon": "👤",
-                "user_id": u.id,
+                "user_id": p.id,
                 "severity": "success"
             })
     

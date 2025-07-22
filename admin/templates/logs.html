@@ -96,40 +96,40 @@
 {% block content %}
 <div class="container">
     <div class="logs-header">
-        <h1>Audit Logs</h1>
-        <button class="btn btn-secondary" onclick="refreshLogs()">
-            🔄 Refresh
+        <h1 data-i18n="audit.title">{{ _('audit.title') }}</h1>
+        <button class="btn btn-secondary" onclick="refreshLogs()" data-i18n="common.refresh">
+            🔄 {{ _('common.refresh') }}
         </button>
     </div>
     
     <div class="logs-filters">
         <div class="filter-group">
-            <label>Admin User</label>
+            <label data-i18n="audit.admin_user">{{ _('audit.admin_user') }}</label>
             <select id="filter-admin" onchange="filterLogs()">
-                <option value="">All Admins</option>
+                <option value="" data-i18n="audit.all_admins">{{ _('audit.all_admins') }}</option>
             </select>
         </div>
         
         <div class="filter-group">
-            <label>Action</label>
+            <label data-i18n="audit.action">{{ _('audit.action') }}</label>
             <select id="filter-action" onchange="filterLogs()">
-                <option value="">All Actions</option>
-                <option value="login">Login</option>
-                <option value="logout">Logout</option>
-                <option value="change_password">Change Password</option>
-                <option value="update_user">Update User</option>
-                <option value="block_user">Block User</option>
-                <option value="unblock_user">Unblock User</option>
+                <option value="" data-i18n="audit.all_actions">{{ _('audit.all_actions') }}</option>
+                <option value="login" data-i18n="audit.login">{{ _('audit.login') }}</option>
+                <option value="logout" data-i18n="audit.logout">{{ _('audit.logout') }}</option>
+                <option value="change_password" data-i18n="audit.change_password">{{ _('audit.change_password') }}</option>
+                <option value="update_user" data-i18n="audit.update_user">{{ _('audit.update_user') }}</option>
+                <option value="block_user" data-i18n="audit.block_user">{{ _('audit.block_user') }}</option>
+                <option value="unblock_user" data-i18n="audit.unblock_user">{{ _('audit.unblock_user') }}</option>
             </select>
         </div>
         
         <div class="filter-group">
-            <label>Date Range</label>
+            <label data-i18n="audit.date_range">{{ _('audit.date_range') }}</label>
             <select id="filter-range" onchange="filterLogs()">
-                <option value="today">Today</option>
-                <option value="week" selected>Last 7 days</option>
-                <option value="month">Last 30 days</option>
-                <option value="all">All time</option>
+                <option value="today" data-i18n="common.today">{{ _('common.today') }}</option>
+                <option value="week" selected data-i18n="audit.last_7_days">{{ _('audit.last_7_days') }}</option>
+                <option value="month" data-i18n="audit.last_30_days">{{ _('audit.last_30_days') }}</option>
+                <option value="all" data-i18n="common.all_time">{{ _('common.all_time') }}</option>
             </select>
         </div>
     </div>
@@ -138,18 +138,18 @@
         <table>
             <thead>
                 <tr>
-                    <th>Timestamp</th>
-                    <th>Admin User</th>
-                    <th>Action</th>
-                    <th>Resource</th>
-                    <th>IP Address</th>
-                    <th>Details</th>
+                    <th data-i18n="audit.timestamp">{{ _('audit.timestamp') }}</th>
+                    <th data-i18n="audit.admin_user">{{ _('audit.admin_user') }}</th>
+                    <th data-i18n="audit.action">{{ _('audit.action') }}</th>
+                    <th data-i18n="audit.resource">{{ _('audit.resource') }}</th>
+                    <th data-i18n="audit.ip_address">{{ _('audit.ip_address') }}</th>
+                    <th data-i18n="audit.details">{{ _('audit.details') }}</th>
                 </tr>
             </thead>
             <tbody id="logs-tbody">
                 <tr>
-                    <td colspan="6" style="text-align: center; padding: 40px;">
-                        Loading audit logs...
+                    <td colspan="6" style="text-align: center; padding: 40px;" data-i18n="audit.loading_logs">
+                        {{ _('audit.loading_logs') }}
                     </td>
                 </tr>
             </tbody>
@@ -170,14 +170,14 @@ async function loadLogs() {
         // Populate admin filter
         const adminFilter = document.getElementById('filter-admin');
         const admins = [...new Set(allLogs.map(log => log.admin_username))];
-        adminFilter.innerHTML = '<option value="">All Admins</option>' + 
+        adminFilter.innerHTML = `<option value="">${window.erasmusAdmin.translate('audit.all_admins')}</option>` + 
             admins.map(admin => `<option value="${admin}">${admin}</option>`).join('');
         
         displayLogs(allLogs);
     } catch (error) {
         console.error('Failed to load logs:', error);
         document.getElementById('logs-tbody').innerHTML = 
-            '<tr><td colspan="6" style="text-align: center; color: red;">Failed to load audit logs</td></tr>';
+            `<tr><td colspan="6" style="text-align: center; color: red;">${window.erasmusAdmin.translate('audit.failed_load_logs')}</td></tr>`;
     }
 }
 
@@ -188,20 +188,15 @@ function displayLogs(logs) {
         tbody.innerHTML = logs.map(log => `
             <tr>
                 <td>${window.erasmusAdmin.formatDate(log.timestamp)}</td>
-                <td>${log.admin_username || 'System'}</td>
+                <td>${log.admin_username || window.erasmusAdmin.translate('audit.system')}</td>
                 <td><span class="action-badge">${formatAction(log.action)}</span></td>
                 <td>${log.resource_type || '-'} ${log.resource_id ? '#' + log.resource_id : ''}</td>
                 <td>${log.ip_address || '-'}</td>
-                <td>
-                    ${log.details ? 
-                        `<button class="details-button" onclick="showDetails('${escapeHtml(JSON.stringify(log.details))}')">View</button>` : 
-                        '-'
-                    }
-                </td>
+                <td>-</td>
             </tr>
         `).join('');
     } else {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center;">No audit logs found</td></tr>';
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align: center;">${window.erasmusAdmin.translate('audit.no_logs_found')}</td></tr>`;
     }
 }
 
@@ -247,32 +242,27 @@ function filterLogs() {
 }
 
 function formatAction(action) {
+    // Try to get a translated version of the action first
+    const translationKey = `audit.${action}`;
+    const translated = window.erasmusAdmin.translate(translationKey);
+    
+    // If translation exists and is different from the key, use it
+    if (translated && translated !== translationKey) {
+        return translated;
+    }
+    
+    // Otherwise, fall back to formatting the technical name
     return action.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 }
 
-function escapeHtml(unsafe) {
-    return unsafe
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-}
-
-function showDetails(detailsJson) {
-    try {
-        const details = JSON.parse(detailsJson);
-        alert('Details:\n\n' + JSON.stringify(details, null, 2));
-    } catch (e) {
-        alert('Failed to parse details');
-    }
-}
 
 function refreshLogs() {
     loadLogs();
 }
 
 // Load logs on page load
-document.addEventListener('DOMContentLoaded', loadLogs);
+document.addEventListener('DOMContentLoaded', () => {
+    loadLogs();
+});
 </script>
 {% endblock %}

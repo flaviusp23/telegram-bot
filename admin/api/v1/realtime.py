@@ -24,8 +24,8 @@ async def event_generator(db: Session) -> AsyncGenerator[str, None]:
     while True:
         try:
             # Get current stats
-            total_users = db.query(func.count(User.id)).scalar()
-            active_users = db.query(func.count(func.distinct(User.id))).filter(
+            total_patients = db.query(func.count(User.id)).scalar()
+            active_patients = db.query(func.count(func.distinct(User.id))).filter(
                 User.last_interaction.isnot(None)
             ).scalar()
             total_responses = db.query(func.count(Response.id)).scalar()
@@ -34,8 +34,8 @@ async def event_generator(db: Session) -> AsyncGenerator[str, None]:
             data = {
                 "timestamp": datetime.now().isoformat(),
                 "stats": {
-                    "total_users": total_users,
-                    "active_users": active_users,
+                    "total_patients": total_patients,
+                    "active_patients": active_patients,
                     "total_responses": total_responses
                 }
             }

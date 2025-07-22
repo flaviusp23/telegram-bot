@@ -1,5 +1,5 @@
 """
-User service for handling user-related business logic.
+Patient service for handling patient-related business logic.
 """
 
 import re
@@ -12,7 +12,7 @@ from database.models import User, UserStatus, Response
 
 
 class UserService:
-    """Service class for user-related operations."""
+    """Service class for patient-related operations."""
     
     @staticmethod
     def validate_email(email: str) -> bool:
@@ -21,7 +21,7 @@ class UserService:
         return bool(re.match(pattern, email))
     
     @staticmethod
-    def get_users_with_filters(
+    def get_patients_with_filters(
         db: Session,
         page: int = 1,
         page_size: int = 20,
@@ -32,10 +32,10 @@ class UserService:
         has_responses: Optional[bool] = None
     ) -> Tuple[List[User], int]:
         """
-        Get users with pagination and filters.
+        Get patients with pagination and filters.
         
         Returns:
-            Tuple of (users, total_count)
+            Tuple of (patients, total_count)
         """
         query = db.query(User)
         
@@ -70,10 +70,10 @@ class UserService:
         # Apply response filter
         if has_responses is not None:
             if has_responses:
-                # Users with at least one response
+                # Patients with at least one response
                 query = query.join(Response).distinct()
             else:
-                # Users with no responses
+                # Patients with no responses
                 query = query.outerjoin(Response).filter(Response.id.is_(None))
         
         # Get total count
@@ -81,14 +81,14 @@ class UserService:
         
         # Apply pagination
         offset = (page - 1) * page_size
-        users = query.offset(offset).limit(page_size).all()
+        patients = query.offset(offset).limit(page_size).all()
         
-        return users, total
+        return patients, total
     
     @staticmethod
     def get_response_counts(db: Session, user_ids: List[int]) -> Dict[int, int]:
         """
-        Get response counts for multiple users.
+        Get response counts for multiple patients.
         
         Returns:
             Dictionary mapping user_id to response count
@@ -107,14 +107,14 @@ class UserService:
         return {user_id: count for user_id, count in counts}
     
     @staticmethod
-    def get_user_with_details(db: Session, user_id: int) -> Optional[User]:
-        """Get user with related data loaded."""
-        return db.query(User).filter(User.id == user_id).first()
+    def get_patient_with_details(db: Session, patient_id: int) -> Optional[User]:
+        """Get patient with related data loaded."""
+        return db.query(User).filter(User.id == patient_id).first()
     
     @staticmethod
-    def update_user(
+    def update_patient(
         db: Session,
-        user: User,
+        patient: User,
         first_name: Optional[str] = None,
         family_name: Optional[str] = None,
         email: Optional[str] = None,
@@ -122,35 +122,35 @@ class UserService:
         status: Optional[str] = None
     ) -> Dict[str, Any]:
         """
-        Update user information and return changes.
+        Update patient information and return changes.
         
         Returns:
             Dictionary of changes made
         """
         changes = {}
         
-        if first_name is not None and user.first_name != first_name:
-            changes["first_name"] = {"old": user.first_name, "new": first_name}
-            user.first_name = first_name
+        if first_name is not None and patient.first_name != first_name:
+            changes["first_name"] = {"old": patient.first_name, "new": first_name}
+            patient.first_name = first_name
         
-        if family_name is not None and user.family_name != family_name:
-            changes["family_name"] = {"old": user.family_name, "new": family_name}
-            user.family_name = family_name
+        if family_name is not None and patient.family_name != family_name:
+            changes["family_name"] = {"old": patient.family_name, "new": family_name}
+            patient.family_name = family_name
         
-        if email is not None and user.email != email:
-            changes["email"] = {"old": user.email, "new": email}
-            user.email = email
+        if email is not None and patient.email != email:
+            changes["email"] = {"old": patient.email, "new": email}
+            patient.email = email
         
-        if phone_number is not None and user.phone_number != phone_number:
-            changes["phone_number"] = {"old": user.phone_number, "new": phone_number}
-            user.phone_number = phone_number
+        if phone_number is not None and patient.phone_number != phone_number:
+            changes["phone_number"] = {"old": patient.phone_number, "new": phone_number}
+            patient.phone_number = phone_number
         
         if status is not None:
             try:
                 new_status = UserStatus(status)
-                if user.status != new_status:
-                    changes["status"] = {"old": user.status.value, "new": new_status.value}
-                    user.status = new_status
+                if patient.status != new_status:
+                    changes["status"] = {"old": patient.status.value, "new": new_status.value}
+                    patient.status = new_status
             except ValueError:
                 # Invalid status, ignore
                 pass
@@ -161,28 +161,28 @@ class UserService:
         return changes
     
     @staticmethod
-    def block_user(db: Session, user: User) -> str:
+    def block_patient(db: Session, patient: User) -> str:
         """
-        Block a user.
+        Block a patient.
         
         Returns:
             Old status value
         """
-        old_status = user.status.value
-        user.status = UserStatus.blocked
+        old_status = patient.status.value
+        patient.status = UserStatus.blocked
         db.commit()
         return old_status
     
     @staticmethod
-    def unblock_user(db: Session, user: User) -> str:
+    def unblock_patient(db: Session, patient: User) -> str:
         """
-        Unblock a user.
+        Unblock a patient.
         
         Returns:
             Old status value
         """
-        old_status = user.status.value
-        user.status = UserStatus.active
+        old_status = patient.status.value
+        patient.status = UserStatus.active
         db.commit()
         return old_status
     
@@ -195,7 +195,7 @@ class UserService:
         to_date: Optional[datetime] = None,
         limit: int = 100
     ) -> List[Response]:
-        """Get user responses with filters."""
+        """Get patient responses with filters."""
         query = db.query(Response).filter(Response.user_id == user_id)
         
         if question_type:
@@ -212,3 +212,22 @@ class UserService:
         
         # Apply limit
         return query.limit(limit).all()
+    
+    @staticmethod
+    def get_patient_responses(
+        db: Session,
+        user_id: int,
+        question_type: Optional[str] = None,
+        from_date: Optional[datetime] = None,
+        to_date: Optional[datetime] = None,
+        limit: int = 100
+    ) -> List[Response]:
+        """Alias for get_user_responses for backward compatibility."""
+        return UserService.get_user_responses(
+            db=db,
+            user_id=user_id,
+            question_type=question_type,
+            from_date=from_date,
+            to_date=to_date,
+            limit=limit
+        )

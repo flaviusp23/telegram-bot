@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ current_language }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,11 +10,25 @@
 <body>
     <nav class="navbar">
         <div class="container">
-            <a href="/dashboard" class="brand">Admin</a>
+            <a href="/dashboard" class="brand" data-i18n="nav.dashboard">{{ _('nav.dashboard') }}</a>
             <ul class="nav-links">
-                <li><a href="/dashboard">Dashboard</a></li>
+                <li><a href="/dashboard" data-i18n="nav.dashboard">{{ _('nav.dashboard') }}</a></li>
+                <li><a href="/users" data-i18n="nav.patients">{{ _('nav.patients') }}</a></li>
+                <li class="language-selector-container">
+                    <select id="language-selector" class="language-selector" onchange="changeLanguage(this.value)">
+                        {% for code, name in available_languages.items() %}
+                            <option value="{{ code }}" {% if code == current_language %}selected{% endif %}>
+                                {% if code == 'en' %}🇬🇧 {{ name }}
+                                {% elif code == 'es' %}🇪🇸 {{ name }}
+                                {% elif code == 'ro' %}🇷🇴 {{ name }}
+                                {% else %}{{ name }}
+                                {% endif %}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </li>
                 <li id="auth-nav-item">
-                    <a href="/login">Login</a>
+                    <a href="/login" data-i18n="auth.login">{{ _('auth.login') }}</a>
                 </li>
             </ul>
         </div>
@@ -26,11 +40,19 @@
     
     <footer class="footer">
         <div class="container">
-            <p>&copy; 2025 Admin Panel. All rights reserved.</p>
+            <p data-i18n="footer.copyright">{{ _('footer.copyright') }}</p>
         </div>
     </footer>
     
+    <script src="{{ url_for('static', path='/js/i18n.js') }}"></script>
     <script src="{{ url_for('static', path='/js/main.js') }}"></script>
+    <script>
+        function changeLanguage(lang) {
+            const url = new URL(window.location);
+            url.searchParams.set('lang', lang);
+            window.location.href = url.toString();
+        }
+    </script>
     {% block extra_js %}{% endblock %}
 </body>
 </html>

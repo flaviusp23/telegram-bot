@@ -22,7 +22,7 @@ class ConnectionManager:
     def __init__(self):
         self.active_connections: Dict[str, Set[WebSocket]] = {
             "dashboard": set(),
-            "users": set(),
+            "patients": set(),
             "logs": set()
         }
     
@@ -91,7 +91,7 @@ async def websocket_dashboard(
                 "type": "stats_update",
                 "timestamp": datetime.now().isoformat(),
                 "data": {
-                    "total_users": db.query(func.count(User.id)).scalar(),
+                    "total_patients": db.query(func.count(User.id)).scalar(),
                     "active_users": db.query(func.count(func.distinct(AssistantInteraction.user_id))).scalar(),
                     "total_responses": db.query(func.count(Response.id)).scalar(),
                     "recent_activity": []  # Add recent activity here

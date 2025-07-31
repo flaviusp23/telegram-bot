@@ -43,7 +43,8 @@ class LlamaEmotionalSupport:
         self, 
         user_message: str, 
         conversation_history: List[Dict[str, str]], 
-        user_name: str
+        user_name: str,
+        language: str = 'English'
     ) -> str:
         """Generate a supportive response using LLaMA"""
         logger.info(f"LLM: Generating response for user '{user_name}'")
@@ -61,7 +62,8 @@ class LlamaEmotionalSupport:
                 context=context,
                 user_message=user_message,
                 user_name=user_name,
-                max_paragraphs=ResponseSettings.MAX_RESPONSE_LENGTH
+                max_paragraphs=ResponseSettings.MAX_RESPONSE_LENGTH,
+                language=language
             )
             
             # Generate response using HTTP API

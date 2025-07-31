@@ -9,6 +9,7 @@ from telegram import Update
 from telegram.ext import ContextTypes
 
 from bot_config.bot_constants import BotMessages
+from bot_config.languages import Languages
 from config import ADMIN_TELEGRAM_IDS, IS_DEVELOPMENT
 from database import get_user_by_telegram_id, db_session_context
 from database.models import User
@@ -44,7 +45,11 @@ def require_registered_user(func: Callable) -> Callable:
             user = get_user_by_telegram_id(db, telegram_id)
             
             if not user:
-                await update.message.reply_text(BotMessages.PLEASE_REGISTER_FIRST)
+                # Import here to avoid circular imports
+                from bot.handlers.language import get_user_language, get_message
+                lang = get_user_language(context, None)
+                message = get_message('NOT_REGISTERED', lang)
+                await update.message.reply_text(message)
                 return
             
             # Pass user to the wrapped function
@@ -62,7 +67,14 @@ def admin_only(telegram_ids: Optional[list] = None):
             allowed_ids = telegram_ids or ADMIN_TELEGRAM_IDS
             
             if user_id not in allowed_ids:
-                await update.message.reply_text(BotMessages.ADMIN_ONLY_ACCESS)
+                # Import here to avoid circular imports
+                from bot.handlers.language import get_user_language, get_message
+                # Try to get user for language preference
+                with db_session_context(commit=False) as db:
+                    user = get_user_by_telegram_id(db, user_id)
+                lang = get_user_language(context, user)
+                message = get_message('ADMIN_ONLY_ACCESS', lang)
+                await update.message.reply_text(message)
                 return
             
             return await func(update, context, *args, **kwargs)
@@ -125,7 +137,14 @@ def rate_limit(max_calls: int = 5, period_seconds: int = 60):
             
             # Check rate limit
             if len(user_calls[user_id]) >= max_calls:
-                await update.message.reply_text(BotMessages.RATE_LIMIT_EXCEEDED)
+                # Import here to avoid circular imports
+                from bot.handlers.language import get_user_language, get_message
+                # Try to get user for language preference
+                with db_session_context(commit=False) as db:
+                    user = get_user_by_telegram_id(db, user_id)
+                lang = get_user_language(context, user)
+                message = get_message('RATE_LIMIT_EXCEEDED', lang)
+                await update.message.reply_text(message)
                 return
             
             # Record this call

@@ -85,6 +85,7 @@ The questionnaire uses the validated DDS-2 scale:
     
     # Status command messages
     NOT_REGISTERED = "You're not registered yet. Use /register to get started!"
+    NEVER_INTERACTED = "Never"
     
     STATUS_TEMPLATE = """📊 Your Status:
 
@@ -141,15 +142,13 @@ Commands:
     
     DDS2_Q1_OVERWHELMED = (
         "Question 1 of 2:\n\n"
-        "Feeling overwhelmed by the demands of living with diabetes\n"
-        "(Me siento agobiado por las exigencias de vivir con diabetes)\n\n"
+        "Feeling overwhelmed by the demands of living with diabetes\n\n"
         "How much of a problem is this for you?"
     )
     
     DDS2_Q2_FAILING = (
         "Question 2 of 2:\n\n"
-        "Feeling that I am often failing with my diabetes regimen\n"
-        "(Siento que a menudo estoy fallando con mi rutina de diabetes)\n\n"
+        "Feeling that I am often failing with my diabetes regimen\n\n"
         "How much of a problem is this for you?"
     )
     
@@ -244,6 +243,8 @@ Period: {start_date} to {end_date}
         "✅ Export complete! All your data has been sent above.\n\n"
         "💡 Tip: You can save these files for your records or share them with your healthcare provider."
     )
+    
+    EXPORT_NO_DATA = "No data available to export for the selected period."
     
     # Error messages
     ERROR_GENERIC = "Sorry, there was an error. Please try again later."

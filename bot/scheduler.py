@@ -12,7 +12,7 @@ from telegram.error import Forbidden, BadRequest
 from bot.handlers.questionnaire_dds2 import send_scheduled_dds2
 from bot.utils.common import handle_blocked_user
 from bot_config.bot_constants import (
-    BotMessages, CallbackData, LogMessages, ButtonLabels
+    BotMessages, CallbackData, LogMessages, ButtonLabels, AlertSettings
 )
 from database import get_active_users, db_session_context
 from database.models import User, UserStatus

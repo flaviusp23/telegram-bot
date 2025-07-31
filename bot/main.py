@@ -30,6 +30,7 @@ from bot.handlers import (
     start, register, status, pause_alerts, resume_alerts,
     questionnaire_dds2, button_callback_dds2, export_data
 )
+from bot.handlers.language import language_command, language_callback
 from bot.handlers.emotional_support import (
     start_support, handle_support_message, cancel_support, CHATTING,
     support_callback
@@ -59,25 +60,42 @@ scheduler = AsyncIOScheduler()
 @log_command_usage
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send a message when the command /help is issued."""
-    await update.message.reply_text(BotMessages.HELP_TEXT)
+    from bot.handlers.language import get_user_language, get_message
+    from database import db_session_context, get_user_by_telegram_id
+    
+    telegram_id = str(update.effective_user.id)
+    with db_session_context(commit=False) as db:
+        user = get_user_by_telegram_id(db, telegram_id)
+        lang = get_user_language(context, user)
+    
+    help_text = get_message('HELP_TEXT', lang)
+    await update.message.reply_text(help_text)
 
 
 @log_command_usage
 async def health_check(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Health check for monitoring"""
+    from bot.handlers.language import get_user_language, get_message
+    from database import db_session_context, get_user_by_telegram_id
+    
+    telegram_id = str(update.effective_user.id)
+    with db_session_context(commit=False) as db:
+        user = get_user_by_telegram_id(db, telegram_id)
+        lang = get_user_language(context, user)
+    
     scheduler_status = "running" if scheduler.running else "stopped"
     jobs = scheduler.get_jobs()
     
-    health_msg = BotMessages.HEALTH_STATUS_TEMPLATE.format(
+    health_msg = get_message('HEALTH_STATUS_TEMPLATE', lang).format(
         scheduler_status=scheduler_status,
         environment=ENVIRONMENT,
         job_count=len(jobs)
     )
     
     if IS_DEVELOPMENT:
-        health_msg += BotMessages.HEALTH_DEV_MODE.format(minutes=AlertSettings.DEV_ALERT_INTERVAL_MINUTES)
+        health_msg += get_message('HEALTH_DEV_MODE', lang).format(minutes=AlertSettings.DEV_ALERT_INTERVAL_MINUTES)
     else:
-        health_msg += BotMessages.HEALTH_PROD_MODE
+        health_msg += get_message('HEALTH_PROD_MODE', lang)
     
     await update.message.reply_text(health_msg)
 
@@ -87,9 +105,13 @@ async def health_check(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 @log_command_usage
 async def send_alerts_now(update: Update, context: ContextTypes.DEFAULT_TYPE, user: User) -> None:
     """Manually trigger alerts to all active users"""
-    await update.message.reply_text(BotMessages.SEND_ALERTS_START)
+    from bot.handlers.language import get_user_language, get_message
+    
+    lang = get_user_language(context, user)
+    
+    await update.message.reply_text(get_message('SEND_ALERTS_START', lang))
     await send_scheduled_alerts(context.bot)
-    await update.message.reply_text(BotMessages.SEND_ALERTS_COMPLETE)
+    await update.message.reply_text(get_message('SEND_ALERTS_COMPLETE', lang))
 
 
 # Error handler
@@ -162,6 +184,7 @@ def main() -> None:
     application.add_handler(CommandHandler("register", register))
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("status", status))
+    application.add_handler(CommandHandler("language", language_command))
     application.add_handler(CommandHandler("pause", pause_alerts))
     application.add_handler(CommandHandler("resume", resume_alerts))
     # Use DDS-2 questionnaire as the default
@@ -170,8 +193,9 @@ def main() -> None:
     application.add_handler(CommandHandler("health", health_check))
     application.add_handler(CommandHandler("send_now", send_alerts_now))
     
-    # Register callback query handler for DDS-2
+    # Register callback query handlers
     application.add_handler(CallbackQueryHandler(button_callback_dds2, pattern="^dds2_"))
+    application.add_handler(CallbackQueryHandler(language_callback, pattern="^set_language_"))
     
     # Add emotional support conversation handler
     support_handler = ConversationHandler(

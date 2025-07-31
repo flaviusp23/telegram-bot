@@ -25,6 +25,7 @@ class User(Base):
     phone_number = Column(EncryptedType(FieldLengths.ENCRYPTED_FIELD_LENGTH))
     telegram_id = Column(String(FieldLengths.TELEGRAM_ID_LENGTH), unique=True, nullable=False)
     email = Column(EncryptedType(FieldLengths.ENCRYPTED_FIELD_LENGTH))
+    language = Column(String(5), nullable=False, server_default='en')  # en, es, ro
     status = Column(Enum(UserStatus), default=UserStatus.active)
     registration_date = Column(TIMESTAMP, server_default=func.current_timestamp())
     last_interaction = Column(TIMESTAMP, nullable=True)

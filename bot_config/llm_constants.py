@@ -41,6 +41,8 @@ Please provide empathetic support in {max_paragraphs} paragraphs or less. Rememb
 - Never give medical advice
 - Encourage professional help for serious concerns
 - Focus on emotional support and coping strategies
+
+IMPORTANT: Respond in {language}. The user prefers to communicate in {language}.
 """
 
 

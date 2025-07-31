@@ -17,6 +17,7 @@ from bot_config.bot_constants import BotMessages
 from bot_config.llm_constants import (
     ConversationStates, SupportMessages, LLMSettings
 )
+from bot.handlers.language import get_user_language, get_message
 from database import (
     db_session_context,
     create_assistant_interaction,
@@ -61,7 +62,9 @@ async def start_support(update: Update, context: ContextTypes.DEFAULT_TYPE, user
     await update.message.reply_text(initial_message)
     
     # Instructions
-    await update.message.reply_text(SupportMessages.CHAT_INSTRUCTIONS)
+    lang = get_user_language(context, user)
+    instructions = get_message('CHAT_INSTRUCTIONS', lang)
+    await update.message.reply_text(instructions)
     
     return CHATTING
 
@@ -90,10 +93,16 @@ async def handle_support_message(update: Update, context: ContextTypes.DEFAULT_T
         # Get response from LLaMA
         user_name = user.first_name if user else "there"
         
+        # Get language preference
+        from bot_config.languages import Languages
+        lang_code = context.user_data.get('language', 'en')
+        language_name = Languages.NAMES.get(lang_code, 'English')
+        
         ai_response = await llama_service.generate_response(
             user_message,
             support_context.get('conversation_history', []),
-            user_name
+            user_name,
+            language_name
         )
         
         # Save to conversation history
@@ -152,9 +161,9 @@ async def end_support(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
 
 async def cancel_support(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Cancel support conversation"""
+    lang = get_user_language(context, None)
     await update.message.reply_text(
-        "Conversation cancelled. "
-        "Feel free to use /support whenever you need to talk."
+        get_message('CONVERSATION_CANCELLED', lang)
     )
     context.user_data.pop('support_context', None)
     return ConversationHandler.END
@@ -163,16 +172,34 @@ async def cancel_support(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 # Quick support after DDS-2 high score
 async def offer_support_after_dds2(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Offer support after high DDS-2 score"""
+    # Get user for language preference
+    telegram_id = str(update.effective_user.id)
+    with db_session_context(commit=False) as db:
+        user = get_user_by_telegram_id(db, telegram_id)
+    
+    lang = get_user_language(context, user)
+    
+    # Get distress level from context
+    distress_level = context.user_data.get('dds2_distress_level', 'moderate')
+    
+    # Select appropriate support offer message based on distress level
+    if distress_level == 'high':
+        message_key = 'SUPPORT_OFFER_HIGH'
+    elif distress_level == 'moderate':
+        message_key = 'SUPPORT_OFFER_MODERATE'
+    else:
+        message_key = 'SUPPORT_OFFER_LOW'
+    
     keyboard = [
         [
-            InlineKeyboardButton("Yes, I'd like support", callback_data="start_support"),
-            InlineKeyboardButton("No, thank you", callback_data="decline_support")
+            InlineKeyboardButton(get_message('SUPPORT_BUTTON_YES', lang), callback_data="start_support"),
+            InlineKeyboardButton(get_message('SUPPORT_BUTTON_NO', lang), callback_data="decline_support")
         ]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
     await update.message.reply_text(
-        SupportMessages.HIGH_DISTRESS_OFFER,
+        get_message(message_key, lang),
         reply_markup=reply_markup
     )
 
@@ -203,7 +230,8 @@ async def support_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                 }
                 
                 # Edit the message to show we're starting
-                await query.edit_message_text("Starting emotional support chat...")
+                lang = get_user_language(context, user)
+                await query.edit_message_text(get_message('STARTING_SUPPORT_CHAT', lang))
                 
                 # Send initial message based on distress level
                 lang = context.user_data.get('language', 'en')
@@ -212,16 +240,26 @@ async def support_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                     initial_message = SupportMessages.INITIAL_PROMPTS['moderate']['en']
                 
                 await query.message.reply_text(initial_message)
-                await query.message.reply_text(SupportMessages.CHAT_INSTRUCTIONS)
+                
+                # Send chat instructions in user's language
+                instructions = get_message('CHAT_INSTRUCTIONS', lang)
+                await query.message.reply_text(instructions)
                 
                 # Return CHATTING state to enter conversation
                 return CHATTING
             else:
-                await query.edit_message_text("Please register first using /register")
+                lang = get_user_language(context, None)
+                await query.edit_message_text(get_message('NOT_REGISTERED', lang))
                 return ConversationHandler.END
     
     elif query.data == "decline_support":
-        await query.edit_message_text(SupportMessages.SUPPORT_DECLINED)
+        # Get user for language preference
+        telegram_id = str(query.from_user.id)
+        with db_session_context(commit=False) as db:
+            user = get_user_by_telegram_id(db, telegram_id)
+        lang = get_user_language(context, user)
+        
+        await query.edit_message_text(get_message('SUPPORT_DECLINED', lang))
         return ConversationHandler.END
     
     return ConversationHandler.END

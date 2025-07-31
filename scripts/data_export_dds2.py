@@ -5,23 +5,27 @@ This module handles exporting both legacy and DDS-2 questionnaire data.
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional, Tuple
 import os
+import logging
 
-import matplotlib.dates as mdates
-import matplotlib.pyplot as plt
-import pandas as pd
+# Check if visualization libraries are available
+try:
+    import matplotlib.dates as mdates
+    import matplotlib.pyplot as plt
+    import pandas as pd
+    GRAPHS_AVAILABLE = True
+except ImportError:
+    GRAPHS_AVAILABLE = False
 
 import xml.etree.ElementTree as ET
 from xml.dom import minidom
 
-import matplotlib.dates as mdates
-import matplotlib.pyplot as plt
-import pandas as pd
-
 from bot_config.bot_constants import (
-    XMLConstants, ExportSettings, BotSettings, GraphSettings
+    XMLConstants, ExportSettings, BotSettings, GraphSettings, AlertSettings
 )
 from database.constants import QuestionTypes, ResponseValues
 from database.models import User, Response
+
+logger = logging.getLogger(__name__)
 
 
 class DDS2DataExporter:
@@ -69,7 +73,7 @@ class DDS2DataExporter:
             ET.SubElement(response_elem, XMLConstants.RESPONSE_VALUE_FIELD).text = response.response_value
         
         # Save XML
-        xml_path = os.path.join(output_dir, XMLConstants.XML_FILENAME)
+        xml_path = os.path.join(output_dir, ExportSettings.XML_FILENAME)
         self._save_pretty_xml(root, xml_path)
         
         return xml_path
@@ -190,7 +194,7 @@ class DDS2DataExporter:
         
         # Calculate response rate
         days = (end_date - start_date).days + 1
-        expected_responses = days * ExportSettings.EXPECTED_RESPONSES_PER_DAY
+        expected_responses = days * AlertSettings.EXPECTED_RESPONSES_PER_DAY
         stats['dds2_response_rate'] = (
             (len(total_scores) / expected_responses * 100) 
             if expected_responses > 0 else 0
@@ -244,7 +248,7 @@ class DDS2DataExporter:
         
         # Calculate response rate
         days = (end_date - start_date).days + 1
-        expected_responses = days * ExportSettings.EXPECTED_RESPONSES_PER_DAY
+        expected_responses = days * AlertSettings.EXPECTED_RESPONSES_PER_DAY
         stats[XMLConstants.RESPONSE_RATE_FIELD] = (len(distress_responses) / expected_responses * 100) if expected_responses > 0 else 0
         
         return stats

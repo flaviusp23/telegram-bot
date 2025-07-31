@@ -22,6 +22,7 @@ from bot.utils.common import (
     validate_user_context
 )
 from bot_config.bot_constants import BotMessages, ButtonLabels, CallbackData
+from bot.handlers.language import get_user_language, get_message
 from database import (
     db_session_context,
     create_response,
@@ -44,33 +45,36 @@ async def questionnaire_dds2(update: Update, context: ContextTypes.DEFAULT_TYPE,
     context.user_data['dds2_mode'] = True
     context.user_data['dds2_responses'] = {}
     
+    # Get user language
+    lang = get_user_language(context, user)
+    
     # Send intro message
-    await update.message.reply_text(
-        BotMessages.DDS2_INTRO.format(user_name=user.first_name)
-    )
+    intro_message = get_message('DDS2_INTRO', lang, user_name=user.first_name)
+    await update.message.reply_text(intro_message)
     
     # Send first question
     await send_dds2_question_1(update.message, context)
 
 
-def _create_dds2_keyboard(question_num: int) -> InlineKeyboardMarkup:
+def _create_dds2_keyboard(question_num: int, lang: str = 'en') -> InlineKeyboardMarkup:
     """Create DDS-2 scale keyboard for a question.
     
     Args:
         question_num: Question number (1 or 2)
+        lang: Language code for button labels
         
     Returns:
         InlineKeyboardMarkup with 6-point scale buttons
     """
+    from bot_config.languages import Messages
+    
     callback_func = CallbackData.dds2_q1 if question_num == 1 else CallbackData.dds2_q2
-    buttons = [
-        (ButtonLabels.DDS2_1, callback_func(1)),
-        (ButtonLabels.DDS2_2, callback_func(2)),
-        (ButtonLabels.DDS2_3, callback_func(3)),
-        (ButtonLabels.DDS2_4, callback_func(4)),
-        (ButtonLabels.DDS2_5, callback_func(5)),
-        (ButtonLabels.DDS2_6, callback_func(6))
-    ]
+    
+    # Get button labels in the specified language
+    buttons = []
+    for i in range(1, 7):
+        label = Messages.BUTTON_LABELS[f'dds2_{i}'].get(lang, Messages.BUTTON_LABELS[f'dds2_{i}']['en'])
+        buttons.append((label, callback_func(i)))
     
     keyboard = [
         [InlineKeyboardButton(text, callback_data=data) for text, data in buttons[:3]],
@@ -87,11 +91,13 @@ async def send_dds2_question_1(message: Any, context: ContextTypes.DEFAULT_TYPE)
         message: Telegram message object
         context: Bot context
     """
-    reply_markup = _create_dds2_keyboard(1)
-    await message.reply_text(
-        BotMessages.DDS2_Q1_OVERWHELMED,
-        reply_markup=reply_markup
-    )
+    # Get user language from context
+    lang = context.user_data.get('language', 'en')
+    
+    reply_markup = _create_dds2_keyboard(1, lang)
+    question_text = get_message('DDS2_Q1_OVERWHELMED', lang)
+    
+    await message.reply_text(question_text, reply_markup=reply_markup)
 
 
 async def _get_or_validate_user_id(query: Any, context: ContextTypes.DEFAULT_TYPE) -> Optional[int]:
@@ -179,11 +185,11 @@ async def handle_dds2_q1_response(
         return
     
     # Send Question 2
-    reply_markup = _create_dds2_keyboard(2)
-    await query.edit_message_text(
-        BotMessages.DDS2_Q2_FAILING,
-        reply_markup=reply_markup
-    )
+    lang = context.user_data.get('language', 'en')
+    reply_markup = _create_dds2_keyboard(2, lang)
+    question_text = get_message('DDS2_Q2_FAILING', lang)
+    
+    await query.edit_message_text(question_text, reply_markup=reply_markup)
 
 
 def _calculate_dds2_scores(context: ContextTypes.DEFAULT_TYPE, q2_rating: int) -> Dict[str, Any]:
@@ -210,47 +216,42 @@ def _calculate_dds2_scores(context: ContextTypes.DEFAULT_TYPE, q2_rating: int) -
 
 async def _send_distress_level_response(
     query: Any, 
-    distress_level: str
+    distress_level: str,
+    context: ContextTypes.DEFAULT_TYPE
 ) -> None:
     """Send appropriate response based on distress level.
     
     Args:
         query: Telegram callback query
         distress_level: Calculated distress level
+        context: Bot context
     """
-    distress_messages = {
-        "low": BotMessages.DDS2_LOW_DISTRESS_RESPONSE,
-        "moderate": BotMessages.DDS2_MODERATE_DISTRESS_RESPONSE,
-        "high": BotMessages.DDS2_HIGH_DISTRESS_RESPONSE
-    }
+    # Get user language
+    lang = context.user_data.get('language', 'en')
     
-    message = distress_messages.get(distress_level, BotMessages.DDS2_LOW_DISTRESS_RESPONSE)
+    # Get appropriate message based on distress level
+    message_key = f'DDS2_{distress_level.upper()}_DISTRESS_RESPONSE'
+    message = get_message(message_key, lang)
+    
     await query.edit_message_text(message)
     
     # Always offer AI support after questionnaire
+    support_button_text = get_message('SUPPORT_BUTTON_CHAT', lang)
+    not_now_button_text = get_message('SUPPORT_BUTTON_NOT_NOW', lang)
+    
     keyboard = [[
-        InlineKeyboardButton("💬 Chat with AI Support", callback_data="start_support"),
-        InlineKeyboardButton("Not now", callback_data="decline_support")
+        InlineKeyboardButton(support_button_text, callback_data="start_support"),
+        InlineKeyboardButton(not_now_button_text, callback_data="decline_support")
     ]]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
     # Customize message based on distress level
     if distress_level == "high":
-        support_message = (
-            "I noticed you're experiencing significant distress. "
-            "Would you like to chat with our AI support assistant? "
-            "I'm here to listen and provide emotional support."
-        )
+        support_message = get_message('SUPPORT_OFFER_HIGH', lang)
     elif distress_level == "moderate":
-        support_message = (
-            "It seems you're dealing with some challenges. "
-            "Would you like to talk about it with our AI support assistant?"
-        )
+        support_message = get_message('SUPPORT_OFFER_MODERATE', lang)
     else:  # low
-        support_message = (
-            "Great job managing your diabetes! "
-            "Would you like to chat with our AI assistant about maintaining your positive habits?"
-        )
+        support_message = get_message('SUPPORT_OFFER_LOW', lang)
     
     await query.message.reply_text(
         support_message,
@@ -297,7 +298,7 @@ async def handle_dds2_q2_response(
     context.user_data['dds2_distress_level'] = scores['distress_level']
     
     # Send appropriate response
-    await _send_distress_level_response(query, scores['distress_level'])
+    await _send_distress_level_response(query, scores['distress_level'], context)
     
     # Clear temporary context data (keep scores for potential LLM use)
     context.user_data.pop('dds2_responses', None)
@@ -336,21 +337,26 @@ async def send_scheduled_dds2(bot: Any, user: User) -> None:
         user: User to send questionnaire to
     """
     try:
-        # Send intro message
+        # Get user's language preference
+        lang = user.language or 'en'
+        
+        # Send intro message in user's language
+        intro_text = get_message('DDS2_INTRO', lang, user_name=user.first_name)
         await bot.send_message(
             chat_id=user.telegram_id,
-            text=BotMessages.DDS2_INTRO.format(user_name=user.first_name)
+            text=intro_text
         )
         
-        # Send first question with keyboard
-        reply_markup = _create_dds2_keyboard(1)
+        # Send first question with keyboard in user's language
+        question_text = get_message('DDS2_Q1_OVERWHELMED', lang)
+        reply_markup = _create_dds2_keyboard(1, lang)
         await bot.send_message(
             chat_id=user.telegram_id,
-            text=BotMessages.DDS2_Q1_OVERWHELMED,
+            text=question_text,
             reply_markup=reply_markup
         )
         
-        logger.info(f"Sent scheduled DDS-2 questionnaire to {user.first_name} (ID: {user.telegram_id})")
+        logger.info(f"Sent scheduled DDS-2 questionnaire to {user.first_name} (ID: {user.telegram_id}) in {lang}")
         
     except Exception as e:
         logger.error(f"Error sending scheduled DDS-2 to {user.telegram_id}: {e}")

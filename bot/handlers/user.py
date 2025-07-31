@@ -17,7 +17,8 @@ from bot.decorators import (
     log_command_usage
 )
 from bot.utils.error_handling import handle_database_errors
-from bot_config.bot_constants import BotMessages, BotSettings, LogMessages
+from bot.handlers.language import get_user_language, get_message
+from bot_config.bot_constants import BotSettings, LogMessages
 from database import db_session_context
 from database.constants import UserStatusValues
 from database.models import User, UserStatus
@@ -30,20 +31,26 @@ logger = logging.getLogger(__name__)
 @log_command_usage
 async def status(update: Update, context: ContextTypes.DEFAULT_TYPE, user: User) -> None:
     """Check user registration status"""
+    # Get user's language preference
+    lang = get_user_language(context, user)
+    
     # Determine alert status message
     if user.status.value == UserStatusValues.ACTIVE:
-        alert_status = BotMessages.ALERT_STATUS_ACTIVE
+        alert_status = get_message('ALERT_STATUS_ACTIVE', lang)
     elif user.status.value == UserStatusValues.INACTIVE:
-        alert_status = BotMessages.ALERT_STATUS_INACTIVE
+        alert_status = get_message('ALERT_STATUS_INACTIVE', lang)
     else:  # blocked
-        alert_status = BotMessages.ALERT_STATUS_BLOCKED
+        alert_status = get_message('ALERT_STATUS_BLOCKED', lang)
     
-    status_text = BotMessages.STATUS_TEMPLATE.format(
+    # Get last interaction text
+    never_interacted = get_message('NEVER_INTERACTED', lang)
+    
+    status_text = get_message('STATUS_TEMPLATE', lang,
         first_name=user.first_name,
         family_name=user.family_name,
         alert_status=alert_status,
         registration_date=user.registration_date.strftime(BotSettings.DATETIME_FORMAT),
-        last_interaction=user.last_interaction.strftime(BotSettings.DATETIME_FORMAT) if user.last_interaction else 'Never'
+        last_interaction=user.last_interaction.strftime(BotSettings.DATETIME_FORMAT) if user.last_interaction else never_interacted
     )
     await update.message.reply_text(status_text)
 
@@ -64,15 +71,18 @@ async def pause_alerts(
         context: Bot context
         user: Registered user object
     """
+    # Get user's language preference
+    lang = get_user_language(context, user)
+    
     with db_session_context() as db:
         # Update status to inactive
         db_user = db.query(User).filter(User.id == user.id).first()
         if db_user:
             if db_user.status == UserStatus.inactive:
-                await update.message.reply_text(BotMessages.PAUSE_ALREADY_PAUSED)
+                await update.message.reply_text(get_message('PAUSE_ALREADY_PAUSED', lang))
             else:
                 db_user.status = UserStatus.inactive
-                await update.message.reply_text(BotMessages.PAUSE_SUCCESS)
+                await update.message.reply_text(get_message('PAUSE_SUCCESS', lang))
 
 
 @require_registered_user
@@ -91,14 +101,17 @@ async def resume_alerts(
         context: Bot context
         user: Registered user object
     """
+    # Get user's language preference
+    lang = get_user_language(context, user)
+    
     with db_session_context() as db:
         # Update status to active
         db_user = db.query(User).filter(User.id == user.id).first()
         if db_user:
             if db_user.status == UserStatus.active:
-                await update.message.reply_text(BotMessages.RESUME_ALREADY_ACTIVE)
+                await update.message.reply_text(get_message('RESUME_ALREADY_ACTIVE', lang))
             elif db_user.status == UserStatus.blocked:
-                await update.message.reply_text(BotMessages.RESUME_BLOCKED)
+                await update.message.reply_text(get_message('RESUME_BLOCKED', lang))
             else:
                 db_user.status = UserStatus.active
-                await update.message.reply_text(BotMessages.RESUME_SUCCESS)
+                await update.message.reply_text(get_message('RESUME_SUCCESS', lang))

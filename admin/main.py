@@ -76,16 +76,25 @@ else:
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 setup_i18n_jinja2(templates.env)
 
+# Simple health endpoint
+@app.get("/ping")
+async def ping():
+    """Simple health check endpoint."""
+    return {"status": "ok", "message": "Admin panel is running"}
+
 # Debug endpoint
 @app.get("/debug")
 async def debug_info():
     """Debug endpoint to check server status."""
-    return {
-        "status": "ok",
-        "environment": settings.ENVIRONMENT,
-        "database_url": SQLALCHEMY_DATABASE_URL[:50] + "...",
-        "timestamp": datetime.utcnow().isoformat()
-    }
+    try:
+        return {
+            "status": "ok",
+            "environment": settings.ENVIRONMENT,
+            "database_url": SQLALCHEMY_DATABASE_URL[:50] + "...",
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
 
 # Include API routers
 app.include_router(api_v1_router, prefix="/api/v1")
@@ -95,21 +104,12 @@ app.include_router(api_v1_router, prefix="/api/v1")
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request: Request, exc: StarletteHTTPException):
     """Handle HTTP exceptions."""
-    if request.url.path.startswith("/api/"):
-        return JSONResponse(
-            status_code=exc.status_code,
-            content={"detail": exc.detail}
-        )
+    logger.error(f"HTTP exception: {exc.status_code} - {exc.detail}")
     
-    # For non-API routes, return HTML error page
-    context = create_template_context(request, {
-        "error_code": exc.status_code,
-        "error_message": exc.detail
-    })
-    return templates.TemplateResponse(
-        "error.html",
-        context,
-        status_code=exc.status_code
+    # Always return JSON for now to avoid template issues
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail, "path": request.url.path}
     )
 
 
@@ -118,20 +118,10 @@ async def general_exception_handler(request: Request, exc: Exception):
     """Handle general exceptions."""
     logger.error(f"Unhandled exception: {exc}", exc_info=True)
     
-    if request.url.path.startswith("/api/"):
-        return JSONResponse(
-            status_code=500,
-            content={"detail": "Internal server error"}
-        )
-    
-    context = create_template_context(request, {
-        "error_code": 500,
-        "error_message": "Internal server error"
-    })
-    return templates.TemplateResponse(
-        "error.html",
-        context,
-        status_code=500
+    # Always return JSON for now to avoid template issues
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error", "error": str(exc), "path": request.url.path}
     )
 
 
@@ -139,7 +129,8 @@ async def general_exception_handler(request: Request, exc: Exception):
 @app.get("/", response_class=HTMLResponse)
 async def root(request: Request):
     """Render the main dashboard."""
-    context = create_template_context(request, {
+    context = create_template_context(request)
+    context.update({
         "page_title": "Dashboard"
     })
     return templates.TemplateResponse("dashboard.html", context)

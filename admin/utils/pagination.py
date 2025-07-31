@@ -4,7 +4,7 @@ Pagination utilities for API endpoints.
 This module provides reusable pagination functionality for list endpoints.
 """
 
-
+from typing import TypeVar, Generic, List
 from pydantic import BaseModel, Field
 
 T = TypeVar('T')

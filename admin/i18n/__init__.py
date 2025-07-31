@@ -7,6 +7,7 @@ that supports multiple languages with JSON-based translation files.
 
 from functools import lru_cache
 from pathlib import Path
+from typing import Dict, Any
 import json
 import threading
 

@@ -10,6 +10,7 @@ Provides protection against:
 
 import json
 import re
+from typing import Any
 
 from fastapi import Request, HTTPException, status
 from fastapi.responses import JSONResponse

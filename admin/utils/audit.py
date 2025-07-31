@@ -4,7 +4,7 @@ Audit logging utilities for tracking admin actions.
 This module provides utilities for creating audit logs for all admin actions.
 """
 
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 from fastapi import Request
 from sqlalchemy.orm import Session
@@ -120,7 +120,7 @@ def format_changes(old_values: Dict[str, Any], new_values: Dict[str, Any]) -> Di
     return changes
 
 
-def sanitize_changes(changes: Dict[str, Any], sensitive_fields: Optional[list] = None) -> Dict[str, Any]:
+def sanitize_changes(changes: Dict[str, Any], sensitive_fields: Optional[List[str]] = None) -> Dict[str, Any]:
     """
     Sanitize sensitive information from audit log changes.
     

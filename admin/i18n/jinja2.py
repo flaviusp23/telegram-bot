@@ -4,7 +4,7 @@ Jinja2 template integration for internationalization.
 This module provides template functions and filters for i18n support.
 """
 
-
+from typing import Dict, Any
 from fastapi import Request
 from jinja2 import Environment
 

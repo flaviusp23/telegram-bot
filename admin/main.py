@@ -72,9 +72,8 @@ else:
     logger.warning(f"Static directory not found at {static_path}")
 
 # Setup templates with i18n
-templates = setup_i18n_jinja2(
-    Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
-)
+templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
+setup_i18n_jinja2(templates.env)
 
 # Include API routers
 app.include_router(api_v1_router, prefix="/api/v1")

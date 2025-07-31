@@ -5,7 +5,7 @@ This module provides decorators and utilities for role-based access control.
 """
 
 from functools import wraps
-from typing import List
+from typing import List, Callable
 
 from fastapi import HTTPException, status, Depends
 from sqlalchemy.orm import Session

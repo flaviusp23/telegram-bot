@@ -1,5 +1,7 @@
 import os
+
 from dotenv import load_dotenv
+
 from bot_config.validators import validate_environment
 
 load_dotenv()

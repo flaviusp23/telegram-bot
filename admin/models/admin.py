@@ -1,11 +1,11 @@
 """Admin database models for the admin panel"""
-from sqlalchemy import Column, Integer, String, Enum, DateTime, ForeignKey, Text, TIMESTAMP, Boolean, JSON
+from datetime import datetime, timezone
+import enum
+
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from database.database import Base
-import enum
-from datetime import datetime, timezone
 
+from database.database import Base
 
 # Admin Role Enum
 class AdminRole(enum.Enum):

@@ -5,14 +5,13 @@ This module provides decorators and utilities for role-based access control.
 """
 
 from functools import wraps
-from typing import List, Optional, Callable
+
 from fastapi import HTTPException, status, Depends
 from sqlalchemy.orm import Session
 
 from admin.core.security import get_current_active_user, TokenData
 from admin.models.admin import AdminUser, AdminRole
 from database.database import get_db
-
 
 class PermissionDenied(HTTPException):
     """Exception raised when user lacks required permissions"""

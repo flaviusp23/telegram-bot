@@ -422,11 +422,8 @@ just run
 - Production-ready scheduler (no event loop issues!)
 - User status management (active/inactive/blocked)
 - Health monitoring
-
-### Coming Soon 🔄
-- LLM Integration for emotional support
-- Advanced analytics
-- Multi-language support
+- AI emotional support powered by LLaMA 3.2
+- Multi-language support (EN/ES)
 
 ## 🎛️ Admin Panel
 

@@ -5,13 +5,10 @@ This module provides a simple but effective internationalization system
 that supports multiple languages with JSON-based translation files.
 """
 
-import json
-import os
-from typing import Dict, Optional, Any
 from functools import lru_cache
 from pathlib import Path
+import json
 import threading
-
 
 class SimpleI18n:
     """

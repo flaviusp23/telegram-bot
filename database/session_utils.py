@@ -1,10 +1,11 @@
 """Database session management utilities for eliminating code duplication"""
-import logging
-from functools import wraps
 from contextlib import contextmanager
-from typing import TypeVar, Callable, Any, Optional
-from sqlalchemy.orm import Session
+from functools import wraps
+import logging
+from typing import TypeVar, Callable
+
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 
 from database.database import SessionLocal
 

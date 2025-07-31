@@ -1,17 +1,21 @@
-from sqlalchemy import Column, Integer, String, Enum, DateTime, ForeignKey, Text, TIMESTAMP
-from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
-from database.database import Base
-from database.encryption import EncryptedType
-from database.constants import UserStatusValues, FieldLengths, TableNames
 import enum
 
+from sqlalchemy import Column, Integer, String, Enum, ForeignKey, Text, TIMESTAMP
+from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
+
+from database.constants import UserStatusValues, FieldLengths, TableNames
+from database.database import Base
+from database.encryption import EncryptedType
+
 class UserStatus(enum.Enum):
+    """Enum for user status values in the database."""
     active = UserStatusValues.ACTIVE
     inactive = UserStatusValues.INACTIVE
     blocked = UserStatusValues.BLOCKED
 
 class User(Base):
+    """User model representing patients in the diabetes monitoring system."""
     __tablename__ = TableNames.USERS
     
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -35,12 +39,13 @@ class User(Base):
         return f"<User(id={self.id}, name={self.first_name} {self.family_name}, telegram_id={self.telegram_id})>"
 
 class Response(Base):
+    """Model for storing patient questionnaire responses."""
     __tablename__ = TableNames.RESPONSES
     
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey(f"{TableNames.USERS}.id"), nullable=False)
-    question_type = Column(String(FieldLengths.QUESTION_TYPE_LENGTH), nullable=False)  # 'distress_check' or 'severity_rating'
-    response_value = Column(String(FieldLengths.RESPONSE_VALUE_LENGTH), nullable=False)  # 'yes'/'no' or '1'-'5'
+    question_type = Column(String(FieldLengths.QUESTION_TYPE_LENGTH), nullable=False)  # e.g., 'dds2_q1_overwhelmed', 'dds2_q2_physician'
+    response_value = Column(String(FieldLengths.RESPONSE_VALUE_LENGTH), nullable=False)  # '1'-'6' for DDS-2 scale
     response_timestamp = Column(TIMESTAMP, server_default=func.current_timestamp())
     created_at = Column(TIMESTAMP, server_default=func.current_timestamp())
     
@@ -51,6 +56,7 @@ class Response(Base):
         return f"<Response(id={self.id}, user_id={self.user_id}, type={self.question_type}, value={self.response_value})>"
 
 class AssistantInteraction(Base):
+    """Model for storing emotional support assistant interactions."""
     __tablename__ = TableNames.ASSISTANT_INTERACTIONS
     
     id = Column(Integer, primary_key=True, autoincrement=True)

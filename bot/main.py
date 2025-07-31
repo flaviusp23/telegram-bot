@@ -19,26 +19,30 @@ import logging
 import os
 import sys
 
-# Add parent directory to path for imports
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from telegram import Update
-from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
+from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes, ConversationHandler, MessageHandler, filters
 
-from config import BOT_TOKEN, ENVIRONMENT, IS_DEVELOPMENT
-from bot_config.bot_constants import (
-    AlertSettings, BotSettings, BotMessages, LogMessages
-)
-from database.models import User
 from bot.decorators import (
     require_registered_user, admin_only, log_command_usage
 )
-from bot.scheduler import send_scheduled_alerts
 from bot.handlers import (
     start, register, status, pause_alerts, resume_alerts,
-    questionnaire, questionnaire_dds2, button_callback, button_callback_dds2, export_data
+    questionnaire_dds2, button_callback_dds2, export_data
 )
+from bot.handlers.emotional_support import (
+    start_support, handle_support_message, cancel_support, CHATTING,
+    support_callback
+)
+from bot.scheduler import send_scheduled_alerts
+from bot_config.bot_constants import (
+    AlertSettings, BotSettings, BotMessages, LogMessages
+)
+from config import BOT_TOKEN, ENVIRONMENT, IS_DEVELOPMENT
+from database.models import User
+
+# Add parent directory to path for imports
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Enable logging
 logging.basicConfig(
@@ -166,16 +170,21 @@ def main() -> None:
     application.add_handler(CommandHandler("health", health_check))
     application.add_handler(CommandHandler("send_now", send_alerts_now))
     
-    # Register callback query handlers - DDS-2 first, then legacy
-    async def combined_button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        """Handle button callbacks, trying DDS-2 first, then legacy"""
-        # Try DDS-2 handler first
-        handled = await button_callback_dds2(update, context)
-        if not handled:
-            # Fall back to legacy handler
-            await button_callback(update, context)
+    # Register callback query handler for DDS-2
+    application.add_handler(CallbackQueryHandler(button_callback_dds2, pattern="^dds2_"))
     
-    application.add_handler(CallbackQueryHandler(combined_button_callback))
+    # Add emotional support conversation handler
+    support_handler = ConversationHandler(
+        entry_points=[
+            CommandHandler("support", start_support),
+            CallbackQueryHandler(support_callback, pattern="^(start_support|decline_support)$")
+        ],
+        states={
+            CHATTING: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_support_message)]
+        },
+        fallbacks=[CommandHandler("cancel", cancel_support)]
+    )
+    application.add_handler(support_handler)
     
     # Register error handler
     application.add_error_handler(error_handler)

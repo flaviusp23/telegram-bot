@@ -1,29 +1,28 @@
 """
 WebSocket support for real-time updates
 """
-from typing import Dict, Set
-import json
-import asyncio
 from datetime import datetime
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, Query
-from sqlalchemy.orm import Session
-from sqlalchemy import func
-import jwt
-from jwt import PyJWTError
+from typing import Dict, Set
+import asyncio
 
-from database.database import get_db
-from database.models import User, Response, AssistantInteraction
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, Query
+from sqlalchemy import func
+from sqlalchemy.orm import Session
+
+from admin.constants import WebSocketSettings
 from admin.core.config import settings
 from admin.models.admin import AdminUser
+from database.database import get_db
+from database.models import User, Response, AssistantInteraction
+from jwt import PyJWTError
+import jwt
 
 router = APIRouter(tags=["websocket"])
 
 class ConnectionManager:
     def __init__(self):
         self.active_connections: Dict[str, Set[WebSocket]] = {
-            "dashboard": set(),
-            "patients": set(),
-            "logs": set()
+            channel: set() for channel in WebSocketSettings.CHANNELS
         }
     
     async def connect(self, websocket: WebSocket, channel: str):
@@ -72,7 +71,7 @@ async def websocket_dashboard(
     # Authenticate user
     user = await get_current_user_from_token(token, db)
     if not user:
-        await websocket.close(code=4001, reason="Unauthorized")
+        await websocket.close(code=WebSocketSettings.ERROR_UNAUTHORIZED, reason="Unauthorized")
         return
     
     await manager.connect(websocket, "dashboard")
@@ -80,7 +79,7 @@ async def websocket_dashboard(
     try:
         # Send initial data
         await websocket.send_json({
-            "type": "connected",
+            "type": WebSocketSettings.MSG_CONNECTED,
             "timestamp": datetime.now().isoformat()
         })
         
@@ -88,7 +87,7 @@ async def websocket_dashboard(
         while True:
             # Get latest stats
             stats = {
-                "type": "stats_update",
+                "type": WebSocketSettings.MSG_STATS_UPDATE,
                 "timestamp": datetime.now().isoformat(),
                 "data": {
                     "total_patients": db.query(func.count(User.id)).scalar(),
@@ -100,17 +99,20 @@ async def websocket_dashboard(
             
             await websocket.send_json(stats)
             
-            # Wait for 5 seconds or until client sends a message
+            # Wait for ping timeout or until client sends a message
             try:
-                message = await asyncio.wait_for(websocket.receive_text(), timeout=5.0)
+                message = await asyncio.wait_for(
+                    websocket.receive_text(), 
+                    timeout=WebSocketSettings.PING_TIMEOUT
+                )
                 # Handle client messages if needed
-                if message == "ping":
-                    await websocket.send_json({"type": "pong"})
+                if message == WebSocketSettings.MSG_PING:
+                    await websocket.send_json({"type": WebSocketSettings.MSG_PONG})
             except asyncio.TimeoutError:
                 pass
             
     except WebSocketDisconnect:
         manager.disconnect(websocket, "dashboard")
     except Exception as e:
-        await websocket.close(code=4000, reason=str(e))
+        await websocket.close(code=WebSocketSettings.ERROR_GENERAL, reason=str(e))
         manager.disconnect(websocket, "dashboard")

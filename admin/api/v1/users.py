@@ -9,21 +9,22 @@ This module provides endpoints for:
 - Viewing patient questionnaire responses
 """
 
-from typing import Optional, List
 from datetime import datetime
+from typing import Optional, List
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status, Request
 from sqlalchemy.orm import Session
 
-from database.database import get_db
-from database.models import User, UserStatus, Response
 from admin.core.permissions import require_admin, require_viewer, AdminUser
-from admin.utils.audit import create_audit_log, AuditAction, EntityType
 from admin.schemas.users import (
-    UserResponse, UserDetailResponse, UserUpdate,
-    PaginatedUsers, ResponseModel
+    UserResponse, UserDetailResponse, UserUpdate, 
+    ResponseModel, PaginatedUsers
 )
 from admin.services.users import UserService
-import logging
+from admin.utils.audit import create_audit_log, AuditAction, EntityType
+from database.database import get_db
+from database.models import User, UserStatus, Response
 
 # Set up logger
 logger = logging.getLogger(__name__)

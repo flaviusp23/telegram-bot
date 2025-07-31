@@ -3,10 +3,12 @@
 This module provides encryption and decryption functionality for sensitive
 data stored in the database using Fernet symmetric encryption.
 """
-import logging
 from typing import Optional, Union
+import logging
+
 from cryptography.fernet import Fernet, InvalidToken
 from sqlalchemy import TypeDecorator, String
+
 from config import ENCRYPTION_KEY
 
 logger = logging.getLogger(__name__)

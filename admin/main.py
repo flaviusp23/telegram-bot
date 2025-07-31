@@ -1,10 +1,11 @@
 """
 Main FastAPI application module for the admin panel.
 """
+from contextlib import asynccontextmanager
+from datetime import datetime, timezone
+from pathlib import Path
 import logging
 import time
-from contextlib import asynccontextmanager
-from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -12,269 +13,150 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.exceptions import HTTPException as StarletteHTTPException
+import uvicorn
 
-# Import API routers
 from admin.api.v1 import router as api_v1_router
-
-# Import configuration
 from admin.core.config import settings
-
-# Import middleware
+from admin.i18n.jinja2 import create_template_context, setup_i18n_jinja2
+from admin.i18n.middleware import I18nMiddleware
 from admin.middleware.rate_limit import RateLimitMiddleware
 from admin.middleware.validation import RequestValidationMiddleware
-from admin.i18n.middleware import I18nMiddleware
 
-# Set up logging
+# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Get configuration from settings
-APP_NAME = settings.API_TITLE
-APP_VERSION = settings.API_VERSION
-DEBUG = settings.is_development
-ALLOWED_ORIGINS = settings.get_cors_origins()
-
-# Path configurations
-BASE_DIR = Path(__file__).resolve().parent
-STATIC_DIR = BASE_DIR / "static"
-TEMPLATES_DIR = BASE_DIR / "templates"
+# Debug flag
+DEBUG = settings.ENVIRONMENT.lower() == "dev"
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Handle application startup and shutdown."""
+    """Manage application lifecycle events."""
     # Startup
-    logger.info(f"Starting {APP_NAME} v{APP_VERSION}")
-    logger.info(f"Environment: {settings.ENVIRONMENT}")
-    logger.info(f"Debug mode: {DEBUG}")
-    logger.info(f"Server: {settings.ADMIN_HOST}:{settings.actual_port}")
-
+    logger.info(f"Starting admin panel in {settings.ENVIRONMENT} mode")
+    logger.info(f"Admin URL: http://{settings.ADMIN_HOST}:{settings.actual_port}")
+    
     yield
-
+    
     # Shutdown
-    logger.info("Shutting down application")
+    logger.info("Shutting down admin panel")
 
 
-# Create FastAPI application
+# Create FastAPI app
 app = FastAPI(
-    title=APP_NAME,
-    version=APP_VERSION,
-    debug=DEBUG,
+    title="Diabetes Monitoring Admin Panel",
+    description="Administrative interface for managing the diabetes monitoring system",
+    version="1.0.0",
     lifespan=lifespan,
-    docs_url="/api/docs" if DEBUG else None,
-    redoc_url="/api/redoc" if DEBUG else None,
+    debug=DEBUG
 )
 
-# Add middleware in correct order (outermost to innermost)
-# 1. Rate limiting (should be first to prevent abuse)
-app.add_middleware(RateLimitMiddleware)
-
-# 2. Request validation and security headers
+# Add middleware
 app.add_middleware(RequestValidationMiddleware)
-
-# 3. Internationalization middleware
-app.add_middleware(I18nMiddleware, default_language="en")
-
-# 4. CORS middleware
+app.add_middleware(RateLimitMiddleware)
+app.add_middleware(I18nMiddleware)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
-    allow_credentials=settings.CORS_ALLOW_CREDENTIALS,
-    allow_methods=settings.CORS_ALLOW_METHODS,
-    allow_headers=settings.CORS_ALLOW_HEADERS,
+    allow_origins=settings.CORS_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Mount static files
-app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+static_path = Path(__file__).parent / "static"
+if static_path.exists():
+    app.mount("/static", StaticFiles(directory=str(static_path)), name="static")
+else:
+    logger.warning(f"Static directory not found at {static_path}")
 
-# Initialize templates with i18n support
-templates = Jinja2Templates(directory=TEMPLATES_DIR)
-
-# Setup i18n for templates - both global and context-based approaches
-from admin.i18n.jinja2 import setup_i18n_jinja2
-setup_i18n_jinja2(templates.env)
-
-
-# Basic HTML routes
-@app.get("/", response_class=HTMLResponse)
-async def home(request: Request):
-    """Serve the home page."""
-    from admin.i18n.jinja2 import create_template_context
-    context = create_template_context(request)
-    context.update({"title": "Home"})
-    return templates.TemplateResponse("index.html", context)
-
-
-@app.get("/login", response_class=HTMLResponse)
-async def login(request: Request):
-    """Serve the login page."""
-    from admin.i18n.jinja2 import create_template_context
-    context = create_template_context(request)
-    context.update({"title": "Login"})
-    return templates.TemplateResponse("login.html", context)
-
-
-@app.get("/dashboard", response_class=HTMLResponse)
-async def dashboard(request: Request):
-    """Serve the dashboard page."""
-    from admin.i18n.jinja2 import create_template_context
-    context = create_template_context(request)
-    context.update({"title": "Dashboard"})
-    return templates.TemplateResponse("dashboard.html", context)
-
-
-@app.get("/users", response_class=HTMLResponse)
-async def users_page(request: Request):
-    """Serve the patients management page."""
-    from admin.i18n.jinja2 import create_template_context
-    context = create_template_context(request)
-    context.update({"title": "Patient Management"})
-    return templates.TemplateResponse("users.html", context)
-
-
-@app.get("/user", response_class=HTMLResponse)
-async def user_detail_page(request: Request):
-    """Serve the patient detail page (legacy URL for compatibility)."""
-    from admin.i18n.jinja2 import create_template_context
-    context = create_template_context(request)
-    context.update({"title": "Patient Details"})
-    return templates.TemplateResponse("user_detail.html", context)
-
-
-@app.get("/patient", response_class=HTMLResponse)
-async def patient_detail_page(request: Request):
-    """Serve the patient detail page."""
-    from admin.i18n.jinja2 import create_template_context
-    context = create_template_context(request)
-    context.update({"title": "Patient Details"})
-    return templates.TemplateResponse("user_detail.html", context)
-
-
-@app.get("/patient-report", response_class=HTMLResponse)
-async def patient_report_page(request: Request):
-    """Serve the patient report page."""
-    from admin.i18n.jinja2 import create_template_context
-    context = create_template_context(request)
-    context.update({"title": "Patient Report"})
-    return templates.TemplateResponse("patient_report.html", context)
-
-
-@app.get("/logs", response_class=HTMLResponse)
-async def logs_page(request: Request):
-    """Serve the audit logs page."""
-    from admin.i18n.jinja2 import create_template_context
-    context = create_template_context(request)
-    context.update({"title": "Audit Logs"})
-    return templates.TemplateResponse("logs.html", context)
-
-
-# Include API v1 routes
-app.include_router(
-    api_v1_router, 
-    prefix=settings.API_V1_PREFIX, 
-    tags=["api_v1"]
+# Setup templates with i18n
+templates = setup_i18n_jinja2(
+    Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 )
 
-
-# Health check endpoint
-@app.get("/api/health")
-async def health_check():
-    """Simple health check endpoint."""
-    from datetime import datetime, timezone
-    return {
-        "status": "healthy",
-        "service": APP_NAME,
-        "version": APP_VERSION,
-        "environment": settings.ENVIRONMENT,
-        "timestamp": datetime.now(timezone.utc).isoformat()
-    }
+# Include API routers
+app.include_router(api_v1_router, prefix="/api/v1")
 
 
-
-# Error handlers with consistent format
+# Exception handlers
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request: Request, exc: StarletteHTTPException):
-    """Handle HTTP exceptions with consistent error format."""
+    """Handle HTTP exceptions."""
     if request.url.path.startswith("/api/"):
-        # Consistent JSON error response format for API routes
-        error_response = {
-            "error": {
-                "code": exc.status_code,
-                "message": str(exc.detail),
-                "type": exc.__class__.__name__
-            }
-        }
-
-        # Add headers if present (e.g., for rate limiting)
-        headers = getattr(exc, "headers", {})
-
         return JSONResponse(
             status_code=exc.status_code,
-            content=error_response,
-            headers=headers
+            content={"detail": exc.detail}
         )
-    else:
-        # Return HTML error page for web routes
-        return templates.TemplateResponse(
-            "error.html",
-            {
-                "request": request,
-                "status_code": exc.status_code,
-                "detail": exc.detail
-            },
-            status_code=exc.status_code
-        )
+    
+    # For non-API routes, return HTML error page
+    context = create_template_context(request, {
+        "error_code": exc.status_code,
+        "error_message": exc.detail
+    })
+    return templates.TemplateResponse(
+        "error.html",
+        context,
+        status_code=exc.status_code
+    )
 
 
-@app.exception_handler(404)
-async def not_found_handler(request: Request, exc: Exception):
-    """Handle 404 errors with consistent format."""
-    if request.url.path.startswith("/api/"):
-        return JSONResponse(
-            status_code=404,
-            content={
-                "error": {
-                    "code": 404,
-                    "message": "Resource not found",
-                    "type": "NotFoundError"
-                }
-            }
-        )
-    else:
-        return templates.TemplateResponse(
-            "404.html",
-            {"request": request},
-            status_code=404
-        )
-
-
-@app.exception_handler(500)
-async def internal_server_error_handler(request: Request, exc: Exception):
-    """Handle 500 errors with consistent format."""
-    logger.error(f"Internal server error: {exc}", exc_info=True)
-
+@app.exception_handler(Exception)
+async def general_exception_handler(request: Request, exc: Exception):
+    """Handle general exceptions."""
+    logger.error(f"Unhandled exception: {exc}", exc_info=True)
+    
     if request.url.path.startswith("/api/"):
         return JSONResponse(
             status_code=500,
-            content={
-                "error": {
-                    "code": 500,
-                    "message": "Internal server error",
-                    "type": "InternalServerError"
-                }
-            }
+            content={"detail": "Internal server error"}
         )
-    else:
-        return templates.TemplateResponse(
-            "500.html",
-            {"request": request},
-            status_code=500
-        )
+    
+    context = create_template_context(request, {
+        "error_code": 500,
+        "error_message": "Internal server error"
+    })
+    return templates.TemplateResponse(
+        "error.html",
+        context,
+        status_code=500
+    )
+
+
+# Root route
+@app.get("/", response_class=HTMLResponse)
+async def root(request: Request):
+    """Render the main dashboard."""
+    context = create_template_context(request, {
+        "page_title": "Dashboard"
+    })
+    return templates.TemplateResponse("dashboard.html", context)
+
+
+# Health check
+@app.get("/health")
+async def health_check():
+    """Health check endpoint."""
+    return {
+        "status": "healthy",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "environment": settings.ENVIRONMENT
+    }
+
+
+# Request timing middleware
+@app.middleware("http")
+async def add_process_time_header(request: Request, call_next):
+    """Add processing time to response headers."""
+    start_time = time.time()
+    response = await call_next(request)
+    process_time = time.time() - start_time
+    response.headers["X-Process-Time"] = str(process_time)
+    return response
 
 
 if __name__ == "__main__":
-    import uvicorn
-
     # Run the application
     uvicorn.run(
         "admin.main:app",

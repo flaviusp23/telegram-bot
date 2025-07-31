@@ -1,6 +1,4 @@
 """Bot-specific constants for the diabetes monitoring system"""
-from datetime import time
-from typing import List, Dict
 
 # Alert Settings
 class AlertSettings:
@@ -62,16 +60,17 @@ class BotMessages:
 /pause - Pause automatic questionnaires
 /resume - Resume automatic questionnaires
 /questionnaire - Complete the DDS-2 questionnaire
+/support - Chat with AI emotional support assistant
 /export - Export your data (XML + graphs)
 /health - Check bot health status
 /help - Show this help message
 
+🤖 AI Support: After completing each questionnaire, you'll be offered a chance to chat with our AI assistant powered by LLaMA 3.2 for emotional support.
+
 The questionnaire uses the validated DDS-2 scale:
 • 2 questions about diabetes distress
 • Scale from 1 (not a problem) to 6 (serious problem)
-• Available in English and Spanish
-
-AI assistant for emotional support coming soon!"""
+• Available in English and Spanish"""
     
     # Health check messages
     HEALTH_STATUS_TEMPLATE = """🏥 Bot Health Status
@@ -166,16 +165,14 @@ Commands:
         "Thank you for completing the questionnaire. 💙\n\n"
         "Your responses indicate moderate diabetes distress.\n"
         "It's normal to feel challenged by diabetes management sometimes.\n\n"
-        "Consider taking some time for self-care today.\n"
-        "The AI assistant feature (coming soon) will provide personalized support."
+        "Consider taking some time for self-care today."
     )
     
     DDS2_HIGH_DISTRESS_RESPONSE = (
         "Thank you for sharing your feelings. 🫂\n\n"
         "Your responses indicate high diabetes distress.\n"
         "Please consider reaching out to your healthcare team for support.\n\n"
-        "Remember, you don't have to manage this alone.\n"
-        "The AI assistant feature (coming soon) will provide additional emotional support."
+        "Remember, you don't have to manage this alone."
     )
     
     # Legacy questionnaire messages (kept for backwards compatibility)
@@ -214,15 +211,13 @@ Commands:
     
     SEVERITY_MODERATE_RESPONSE = (
         "Thank you for sharing. Moderate distress can be challenging. 💪\n\n"
-        "Consider taking a few minutes for self-care today.\n"
-        "Would you like to chat with the AI assistant for support? (Coming soon)"
+        "Consider taking a few minutes for self-care today."
     )
     
     SEVERITY_HIGH_RESPONSE = (
         "I'm concerned about your high distress level. 🫂\n\n"
         "Please consider reaching out to your healthcare team or a mental health professional.\n"
-        "Remember, you don't have to manage this alone.\n\n"
-        "The AI assistant feature (coming soon) will provide additional support."
+        "Remember, you don't have to manage this alone."
     )
     
     # Export messages
@@ -321,8 +316,13 @@ class CallbackData:
 class ExportSettings:
     """Constants for data export functionality"""
     DEFAULT_EXPORT_DAYS = 30
+    MAX_EXPORT_DAYS = 365  # Maximum days for export
+    MIN_EXPORT_DAYS = 1    # Minimum days for export
     EXPORT_DIR_PREFIX = "temp_exports"
     XML_FILENAME = "data_export.xml"
+    
+    # Export cleanup
+    EXPORT_CLEANUP_HOURS = 24  # Delete exports after 24 hours
     
     # Graph filenames and captions
     GRAPHS = [
@@ -338,6 +338,10 @@ class ExportSettings:
     # Graph colors
     SEVERITY_COLORS = ['#2ecc71', '#f1c40f', '#e67e22', '#e74c3c', '#c0392b']
     RESPONSE_RATE_COLOR = '#3498db'
+    
+    # Graph quality settings
+    GRAPH_DPI = 100
+    GRAPH_QUALITY = 95  # JPEG quality percentage
 
 
 # Bot Settings
@@ -360,6 +364,18 @@ class BotSettings:
     # Scheduler settings
     SCHEDULER_COALESCE = True
     SCHEDULER_MAX_INSTANCES = 1
+    
+    # Bot timeouts
+    CONVERSATION_TIMEOUT = 300  # 5 minutes for conversation handlers
+    REQUEST_TIMEOUT = 30  # 30 seconds for API requests
+    
+    # Rate limiting
+    MAX_COMMANDS_PER_MINUTE = 10
+    MAX_EXPORTS_PER_DAY = 5
+    
+    # File size limits
+    MAX_EXPORT_FILE_SIZE_MB = 10
+    MAX_IMAGE_SIZE_MB = 5
 
 
 # Logging Messages

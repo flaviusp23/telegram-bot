@@ -13,8 +13,7 @@ matplotlib==3.10.3
 lxml==5.1.0
 
 # LLM
-# openai==1.6.1
-# transformers==4.36.2
+aiohttp==3.10.11  # For LLaMA 3.2 HTTP API
 
 # Admin Backend Dependencies
 fastapi==0.104.1
@@ -26,7 +25,7 @@ bcrypt==4.2.1  # Pinned for Python 3.13 compatibility
 python-multipart==0.0.6
 pydantic[email]==2.10.4
 pydantic-settings==2.7.0
-httpx==0.24.1
+httpx>=0.24.1,<0.26.0  # Compatible with both telegram-bot and ollama
 jinja2==3.1.2
 openpyxl==3.1.2
 reportlab==4.0.8

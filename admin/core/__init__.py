@@ -1,0 +1,1 @@
+"""Core functionality for the admin panel including configuration, permissions, and security."""

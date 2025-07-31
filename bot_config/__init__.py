@@ -1,17 +1,9 @@
 """Configuration module for diabetes monitoring system"""
 from .bot_constants import (
-    AlertSettings,
-    BotMessages,
-    ButtonLabels,
-    CallbackData,
-    ExportSettings,
-    BotSettings,
-    LogMessages,
-    XMLConstants,
-    GraphSettings
+    AlertSettings, BotMessages, ButtonLabels, CallbackData,
+    ExportSettings, BotSettings, LogMessages, XMLConstants, GraphSettings
 )
 
-# Import from main config - handle import error gracefully
 try:
     from config import ADMIN_TELEGRAM_IDS
 except ImportError:

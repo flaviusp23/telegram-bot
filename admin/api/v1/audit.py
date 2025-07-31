@@ -1,16 +1,16 @@
 """
 Audit log endpoints for admin panel
 """
-from typing import Optional, List
 from datetime import datetime, timedelta
-from fastapi import APIRouter, Depends, Query, HTTPException
-from sqlalchemy.orm import Session
-from sqlalchemy import and_, or_
+from typing import Optional, List
 
-from database.database import get_db
-from admin.models.admin import AuditLog, AdminUser
-from admin.core.permissions import require_viewer, require_admin
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
+
+from admin.core.permissions import require_viewer, require_admin
+from admin.models.admin import AuditLog, AdminUser
+from database.database import get_db
 
 router = APIRouter(tags=["audit"])
 

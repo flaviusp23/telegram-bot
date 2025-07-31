@@ -5,12 +5,9 @@ variables are properly set before the application starts.
 """
 import os
 import sys
-from typing import List, Tuple
-
 
 class EnvironmentValidationError(Exception):
     """Raised when environment validation fails"""
-    pass
 
 
 def validate_environment() -> None:

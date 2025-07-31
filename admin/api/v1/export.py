@@ -2,17 +2,17 @@
 Data export endpoints for admin panel
 """
 from datetime import datetime, timedelta, timezone
-from typing import Optional
-import pandas as pd
 from io import BytesIO
-from fastapi import APIRouter, Depends, Query, HTTPException, Header
+from typing import Optional
+
+from fastapi import APIRouter, Depends, Query, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
-from sqlalchemy import and_
+import pandas as pd
 
+from admin.core.permissions import require_viewer, AdminUser, require_admin
 from database.database import get_db
 from database.models import User, Response
-from admin.core.permissions import require_viewer, AdminUser, require_admin
 
 router = APIRouter(tags=["export"])
 

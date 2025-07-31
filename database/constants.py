@@ -20,7 +20,7 @@ class QuestionTypes:
     DDS2_Q1_OVERWHELMED = "dds2_q1_overwhelmed"
     DDS2_Q2_FAILING = "dds2_q2_failing"
     
-    # Legacy question types (kept for backwards compatibility)
+    # Legacy question types (kept for data migration only)
     DISTRESS_CHECK = "distress_check"
     SEVERITY_RATING = "severity_rating"
     
@@ -38,7 +38,7 @@ class QuestionTypes:
 # Response Values
 class ResponseValues:
     """Possible response values for questions"""
-    # Boolean responses (legacy)
+    # Boolean responses (kept for data migration only)
     YES = "yes"
     NO = "no"
     
@@ -50,7 +50,7 @@ class ResponseValues:
     DDS2_5 = "5"  # A serious problem
     DDS2_6 = "6"  # A very serious problem
     
-    # Legacy severity ratings (1-5)
+    # Legacy severity ratings (kept for data migration only)
     RATING_1 = "1"
     RATING_2 = "2"
     RATING_3 = "3"
@@ -62,17 +62,14 @@ class ResponseValues:
     DDS2_MODERATE_DISTRESS_THRESHOLD = 8  # Score 5-8: Moderate distress
     # Score 9-12: High distress
     
-    # Legacy severity levels (for backwards compatibility)
-    SEVERITY_VERY_MILD = 1
-    SEVERITY_MILD = 2
-    SEVERITY_MODERATE = 3
-    SEVERITY_SEVERE = 4
-    SEVERITY_VERY_SEVERE = 5
-    
-    # Legacy severity ranges
-    MILD_SEVERITY_RANGE = [1, 2]
-    MODERATE_SEVERITY_RANGE = [3]
-    HIGH_SEVERITY_RANGE = [4, 5]
+    # Legacy severity levels - DEPRECATED
+    # These are kept only for data migration purposes
+    # DO NOT use these for new features
+    _LEGACY_SEVERITY_VERY_MILD = 1
+    _LEGACY_SEVERITY_MILD = 2
+    _LEGACY_SEVERITY_MODERATE = 3
+    _LEGACY_SEVERITY_SEVERE = 4
+    _LEGACY_SEVERITY_VERY_SEVERE = 5
     
     @classmethod
     def get_boolean_values(cls) -> List[str]:
@@ -86,14 +83,8 @@ class ResponseValues:
     
     @classmethod
     def get_rating_values(cls) -> List[str]:
-        """Get legacy severity rating values (1-5)"""
+        """Get legacy severity rating values (1-5) - for data migration only"""
         return [cls.RATING_1, cls.RATING_2, cls.RATING_3, cls.RATING_4, cls.RATING_5]
-    
-    @classmethod
-    def get_numeric_ratings(cls) -> List[int]:
-        """Get numeric severity ratings"""
-        return [cls.SEVERITY_VERY_MILD, cls.SEVERITY_MILD, cls.SEVERITY_MODERATE, 
-                cls.SEVERITY_SEVERE, cls.SEVERITY_VERY_SEVERE]
     
     @classmethod
     def calculate_dds2_distress_level(cls, total_score: int) -> str:

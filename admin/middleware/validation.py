@@ -10,14 +10,12 @@ Provides protection against:
 
 import json
 import re
-from typing import Optional, Dict, Any
 
 from fastapi import Request, HTTPException, status
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from admin.core.config import settings
-
 
 class ValidationError(HTTPException):
     """Exception raised for validation errors"""

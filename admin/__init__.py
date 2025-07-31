@@ -8,6 +8,5 @@ __version__ = "1.0.0"
 __author__ = "Erasmus Team"
 
 # Import key components for easier access
-from admin.core.config import settings
 
 __all__ = ["settings"]

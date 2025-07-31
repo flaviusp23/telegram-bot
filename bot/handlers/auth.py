@@ -4,29 +4,45 @@ Handles:
 - /start command
 - /register command
 """
+from typing import Optional
 import logging
+
 from telegram import Update
 from telegram.ext import ContextTypes
 
-from database import (
-    create_user,
-    db_session_context
-)
-from database.models import User
-from database.constants import DefaultValues
-from bot_config.bot_constants import BotMessages, LogMessages
 from bot.decorators import (
     with_user_context,
-    log_command_usage
+    log_command_usage,
+    update_last_interaction
 )
+from bot.utils.error_handling import handle_all_errors
+from bot_config.bot_constants import BotMessages, LogMessages
+from database import (
+    db_session_context,
+    get_user_by_telegram_id,
+    create_user
+)
+from database.constants import DefaultValues
+from database.models import User
 
 logger = logging.getLogger(__name__)
 
 
 @with_user_context
 @log_command_usage
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE, user: User = None) -> None:
-    """Send a message when the command /start is issued."""
+@handle_all_errors()
+async def start(
+    update: Update, 
+    context: ContextTypes.DEFAULT_TYPE, 
+    user: Optional[User] = None
+) -> None:
+    """Send a message when the command /start is issued.
+    
+    Args:
+        update: Telegram update object
+        context: Bot context
+        user: User object if registered, None otherwise
+    """
     telegram_user = update.effective_user
     
     if user:
@@ -43,35 +59,41 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE, user: User =
 
 @with_user_context
 @log_command_usage
-async def register(update: Update, context: ContextTypes.DEFAULT_TYPE, user: User = None) -> None:
-    """Register a new user"""
+@handle_all_errors(error_message=BotMessages.REGISTRATION_ERROR)
+async def register(
+    update: Update, 
+    context: ContextTypes.DEFAULT_TYPE, 
+    user: Optional[User] = None
+) -> None:
+    """Register a new user.
+    
+    Args:
+        update: Telegram update object
+        context: Bot context
+        user: User object if already registered, None otherwise
+    """
     telegram_user = update.effective_user
     telegram_id = str(telegram_user.id)
     
-    try:
-        with db_session_context() as db:
-            # Check if already registered
-            if user:
-                await update.message.reply_text(
-                    BotMessages.ALREADY_REGISTERED.format(first_name=user.first_name)
-                )
-                return
-            
-            # Register new user
-            user = create_user(
-                db=db,
-                first_name=telegram_user.first_name or DefaultValues.DEFAULT_NAME,
-                family_name=telegram_user.last_name or DefaultValues.DEFAULT_FAMILY_NAME,
-                passport_id=None,
-                phone_number=None,
-                telegram_id=telegram_id,
-                email=None
-            )
-            
-            await update.message.reply_text(
-                BotMessages.REGISTRATION_SUCCESS.format(first_name=user.first_name)
-            )
-            
-    except Exception as e:
-        logger.error(LogMessages.ERROR_REGISTRATION.format(error=e))
-        await update.message.reply_text(BotMessages.REGISTRATION_ERROR)
+    # Check if already registered
+    if user:
+        await update.message.reply_text(
+            BotMessages.ALREADY_REGISTERED.format(first_name=user.first_name)
+        )
+        return
+    
+    # Register new user
+    with db_session_context() as db:
+        user = create_user(
+            db=db,
+            first_name=telegram_user.first_name or DefaultValues.DEFAULT_NAME,
+            family_name=telegram_user.last_name or DefaultValues.DEFAULT_FAMILY_NAME,
+            passport_id=None,
+            phone_number=None,
+            telegram_id=telegram_id,
+            email=None
+        )
+        
+        await update.message.reply_text(
+            BotMessages.REGISTRATION_SUCCESS.format(first_name=user.first_name)
+        )

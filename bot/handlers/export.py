@@ -4,155 +4,32 @@ Handles:
 - /export command
 - Helper functions for data export
 """
+from datetime import datetime, timedelta
 import logging
 import os
-from datetime import datetime, timedelta
+import shutil
+
 from telegram import Update
 from telegram.ext import ContextTypes
 
-from database import db_session_context
-from database.models import User, Response
-from bot_config.bot_constants import (
-    BotMessages, BotSettings, ExportSettings, LogMessages
-)
 from bot.decorators import (
     require_registered_user,
     update_last_interaction,
-    rate_limit,
-    log_command_usage
+    log_command_usage,
+    rate_limit
 )
+from bot_config.bot_constants import (
+    BotMessages, ExportSettings, LogMessages
+)
+from database import db_session_context
+from database.models import User, Response
+from scripts.data_export_dds2 import DDS2DataExporter
 
 logger = logging.getLogger(__name__)
 
 
-def prepare_export_directory(telegram_id: str) -> str:
-    """Creates temporary directory for export files.
-    
-    Args:
-        telegram_id: User's telegram ID
-        
-    Returns:
-        str: Path to the created export directory
-    """
-    timestamp = datetime.now().strftime(BotSettings.TIMESTAMP_FORMAT)
-    export_dir = os.path.join(ExportSettings.EXPORT_DIR_PREFIX, f"user_{telegram_id}_{timestamp}")
-    os.makedirs(export_dir, exist_ok=True)
-    return export_dir
-
-
-def generate_export_files(db, user: User, start_date: datetime, end_date: datetime, export_dir: str) -> dict:
-    """Generates XML export and graphs for user data.
-    
-    Args:
-        db: Database session
-        user: User object
-        start_date: Start date for export
-        end_date: End date for export
-        export_dir: Directory to save files
-        
-    Returns:
-        dict: Export results containing stats and graph generation status
-    """
-    from scripts.data_export_dds2 import DDS2DataExporter
-    
-    # Create exporter and generate files
-    exporter = DDS2DataExporter()
-    
-    # Get user responses
-    responses = db.query(Response).filter(
-        Response.user_id == user.id,
-        Response.response_timestamp >= start_date,
-        Response.response_timestamp <= end_date
-    ).order_by(Response.response_timestamp).all()
-    
-    # Export XML and get path
-    xml_path = exporter.export_user_data(user, responses, start_date, end_date, export_dir)
-    
-    # Calculate statistics for the summary
-    stats = exporter._calculate_statistics(responses, start_date, end_date)
-    stats['period'] = {
-        'start': start_date.isoformat(),
-        'end': end_date.isoformat()
-    }
-    
-    # Generate graphs if matplotlib is available
-    graphs_generated = False
-    try:
-        exporter.generate_graphs(responses, user, start_date, end_date, export_dir)
-        graphs_generated = True
-    except Exception as e:
-        logger.warning(LogMessages.WARNING_GRAPHS_NOT_GENERATED.format(error=e))
-    
-    return {
-        'stats': stats,
-        'xml_file': xml_path,
-        'graphs_generated': graphs_generated
-    }
-
-
-async def send_export_files_to_user(update: Update, export_dir: str, stats: dict, graphs_generated: bool) -> None:
-    """Sends export files and statistics to user via Telegram.
-    
-    Args:
-        update: Telegram update object
-        export_dir: Directory containing export files
-        stats: Statistics dictionary
-        graphs_generated: Whether graphs were successfully generated
-    """
-    timestamp = datetime.now().strftime(BotSettings.TIMESTAMP_FORMAT)
-    
-    # Send statistics summary
-    start_date = datetime.fromisoformat(stats['period']['start'])
-    end_date = datetime.fromisoformat(stats['period']['end'])
-    
-    summary = BotMessages.EXPORT_SUMMARY_TEMPLATE.format(
-        start_date=start_date.date(),
-        end_date=end_date.date(),
-        total_responses=stats['total_responses'],
-        distress_count=stats['distress_count'],
-        distress_percentage=stats['distress_percentage'],
-        average_severity=stats['average_severity'],
-        response_rate=stats['response_rate']
-    )
-    
-    # Add severity distribution details
-    for level in range(1, 6):
-        count = stats['severity_distribution'][level]
-        if count > 0:
-            summary += f"• Level {level}: {count} times\n"
-    
-    await update.message.reply_text(summary, parse_mode='Markdown')
-    
-    # Send XML file
-    xml_file = os.path.join(export_dir, ExportSettings.XML_FILENAME)
-    with open(xml_file, 'rb') as f:
-        await update.message.reply_document(
-            document=f,
-            filename=f'diabetes_data_{timestamp}.xml',
-            caption=BotMessages.EXPORT_XML_CAPTION
-        )
-    
-    # Send graphs if generated
-    if graphs_generated:
-        graph_files = ExportSettings.GRAPHS
-        
-        for filename, caption in graph_files:
-            filepath = os.path.join(export_dir, filename)
-            if os.path.exists(filepath):
-                with open(filepath, 'rb') as f:
-                    await update.message.reply_photo(
-                        photo=f,
-                        caption=caption
-                    )
-
-
-def cleanup_export_directory(export_dir: str) -> None:
-    """Cleans up temporary export directory.
-    
-    Args:
-        export_dir: Directory to remove
-    """
-    import shutil
+def cleanup_export_dir(export_dir: str) -> None:
+    """Clean up temporary export directory"""
     try:
         if os.path.exists(export_dir):
             shutil.rmtree(export_dir)

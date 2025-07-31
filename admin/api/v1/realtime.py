@@ -1,18 +1,19 @@
 """
 Real-time updates via Server-Sent Events (SSE)
 """
+from datetime import datetime
 from typing import AsyncGenerator
 import asyncio
 import json
-from datetime import datetime
+
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
-from sqlalchemy.orm import Session
 from sqlalchemy import func
+from sqlalchemy.orm import Session
 
+from admin.core.permissions import require_viewer, AdminUser
 from database.database import get_db
 from database.models import User, Response
-from admin.core.permissions import require_viewer, AdminUser
 
 router = APIRouter(tags=["realtime"])
 

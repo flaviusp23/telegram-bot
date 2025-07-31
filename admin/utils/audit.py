@@ -5,11 +5,11 @@ This module provides utilities for creating audit logs for all admin actions.
 """
 
 from typing import Optional, Dict, Any
-from sqlalchemy.orm import Session
+
 from fastapi import Request
+from sqlalchemy.orm import Session
 
 from admin.models.admin import AuditLog
-
 
 class AuditAction:
     """Standard audit action types"""
@@ -74,11 +74,11 @@ async def create_audit_log(
         Created AuditLog instance
     """
     audit_log = AuditLog(
-        admin_user_id=admin_id,  # Changed from admin_id
+        admin_user_id=admin_id,
         action=action,
-        resource_type=entity_type,  # Changed from entity_type
-        resource_id=entity_id,  # Changed from entity_id
-        details=changes,  # Changed from changes_json
+        resource_type=entity_type,
+        resource_id=entity_id,
+        details=changes,
         ip_address=request.client.host if request and request.client else None,
         user_agent=request.headers.get("user-agent") if request else None
     )

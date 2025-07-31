@@ -7,14 +7,11 @@ This middleware handles:
 - Managing language preferences via cookies
 """
 
-from typing import Optional
-from fastapi import Request, Response
-from fastapi.responses import JSONResponse
+
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 
 from admin.i18n import i18n
-
 
 class I18nMiddleware(BaseHTTPMiddleware):
     """

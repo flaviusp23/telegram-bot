@@ -11,25 +11,23 @@ This module provides endpoints for:
 
 from datetime import datetime, timedelta, timezone
 from typing import Optional
+import logging
 
 from fastapi import APIRouter, Depends, HTTPException, status, Request
-from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
 
 from admin.core.security import (
     verify_password,
     hash_password,
     create_tokens,
-    get_current_user,
-    get_current_active_user,
     refresh_access_token,
-    validate_password_strength,
+    get_current_active_user,
     TokenData,
-    Token
+    validate_password_strength
 )
 from admin.models.admin import AdminUser, AdminSession, AuditLog
 from database.database import get_db
-import logging
 
 # Set up logger
 logger = logging.getLogger(__name__)
@@ -169,13 +167,6 @@ def check_account_lockout(user: AdminUser) -> bool:
     """Check if user account is locked due to failed login attempts"""
     # Account lockout feature not implemented in current schema
     return False
-
-
-def update_failed_login_attempts(db: Session, user: AdminUser, reset: bool = False):
-    """Update failed login attempts counter"""
-    # Failed login attempts tracking not implemented in current schema
-    # This is a placeholder for future implementation
-    pass
 
 
 # API Endpoints

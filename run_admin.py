@@ -21,74 +21,59 @@ Usage examples:
     # Show all available options
     ./run_admin.py --help
 """
-import sys
+from pathlib import Path
 import argparse
 import logging
-from pathlib import Path
+import sys
 
-# Add project directory to Python path
-sys.path.insert(0, str(Path(__file__).parent))
+# Add parent directory to path
+sys.path.append(str(Path(__file__).parent))
 
 import uvicorn
+
 from admin.core.config import settings
 
 
-def setup_logging(log_level: str = "info"):
-    """
-    Configure logging for the admin server.
+def validate_settings():
+    """Validate required settings are present."""
+    required = ['DB_HOST', 'DB_USER', 'DB_NAME', 'JWT_SECRET_KEY']
+    missing = []
     
-    Args:
-        log_level: Logging level (debug, info, warning, error)
-    """
-    # Convert string log level to logging constant
-    numeric_level = getattr(logging, log_level.upper(), None)
-    if not isinstance(numeric_level, int):
-        raise ValueError(f'Invalid log level: {log_level}')
+    for setting in required:
+        if not getattr(settings, setting, None):
+            missing.append(setting)
     
-    # Configure root logger
-    logging.basicConfig(
-        level=numeric_level,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S'
-    )
-    
-    # Set specific loggers
-    logging.getLogger("uvicorn").setLevel(numeric_level)
-    logging.getLogger("uvicorn.error").setLevel(numeric_level)
-    logging.getLogger("uvicorn.access").setLevel(numeric_level)
-    
-    # In production, reduce verbosity of some loggers
-    if settings.is_production:
-        logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
-        logging.getLogger("multipart").setLevel(logging.WARNING)
+    if missing:
+        raise ValueError(f"Missing required settings: {', '.join(missing)}")
 
 
-def parse_arguments():
-    """Parse command-line arguments."""
+def main():
+    """Main entry point for the admin server."""
+    # Set up argument parser
     parser = argparse.ArgumentParser(
-        description="Run the Diabetes Monitoring Admin Panel",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+        description="Run the diabetes monitoring admin panel",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=__doc__
     )
     
     parser.add_argument(
         "--host",
-        type=str,
         default=settings.ADMIN_HOST,
-        help="Host to bind the server to"
+        help=f"Host to bind to (default: {settings.ADMIN_HOST})"
     )
     
     parser.add_argument(
         "--port",
         type=int,
         default=settings.actual_port,
-        help="Port to bind the server to"
+        help=f"Port to bind to (default: {settings.actual_port})"
     )
     
     parser.add_argument(
         "--reload",
         action="store_true",
-        default=settings.is_development,
-        help="Enable auto-reload (development mode)"
+        default=settings.ENVIRONMENT.lower() == "dev",
+        help="Enable auto-reload (default: enabled in dev mode)"
     )
     
     parser.add_argument(
@@ -102,22 +87,21 @@ def parse_arguments():
         "--workers",
         type=int,
         default=1,
-        help="Number of worker processes (ignored if --reload is set)"
+        help="Number of worker processes (default: 1)"
     )
     
     parser.add_argument(
         "--log-level",
-        type=str,
-        choices=["debug", "info", "warning", "error"],
-        default="debug" if settings.is_development else "info",
-        help="Logging level"
+        default="info",
+        choices=["critical", "error", "warning", "info", "debug", "trace"],
+        help="Logging level (default: info)"
     )
     
     parser.add_argument(
         "--access-log",
         action="store_true",
         default=True,
-        help="Enable access log"
+        help="Enable access log (default: enabled)"
     )
     
     parser.add_argument(
@@ -127,30 +111,20 @@ def parse_arguments():
         help="Disable access log"
     )
     
-    return parser.parse_args()
-
-
-def main():
-    """Main entry point for running the admin server."""
-    # Parse command-line arguments
-    args = parse_arguments()
+    args = parser.parse_args()
     
-    # Setup logging
-    setup_logging(args.log_level)
+    # Set up logging
+    logging.basicConfig(
+        level=getattr(logging, args.log_level.upper()),
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
     logger = logging.getLogger(__name__)
     
-    # Log startup information
-    logger.info("=" * 60)
-    logger.info(f"Starting {settings.API_TITLE} v{settings.API_VERSION}")
+    logger.info(f"Starting admin panel on {args.host}:{args.port}")
     logger.info(f"Environment: {settings.ENVIRONMENT}")
-    logger.info(f"Server: http://{args.host}:{args.port}")
-    logger.info(f"API Docs: http://{args.host}:{args.port}/api/docs")
-    logger.info(f"Auto-reload: {'enabled' if args.reload else 'disabled'}")
-    logger.info("=" * 60)
     
-    # Validate settings before starting
+    # Validate settings
     try:
-        from admin.core.config import validate_settings
         validate_settings()
     except ValueError as e:
         logger.error(f"Configuration error: {e}")
@@ -179,7 +153,7 @@ def main():
         logger.info("Watching directories: admin, bot")
     
     # Additional production configurations
-    if settings.is_production:
+    if settings.ENVIRONMENT.lower() == "prod":
         # Use production-ready server settings
         uvicorn_config.update({
             "loop": "uvloop",  # Use uvloop for better performance

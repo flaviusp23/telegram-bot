@@ -4,13 +4,12 @@ Jinja2 template integration for internationalization.
 This module provides template functions and filters for i18n support.
 """
 
-from typing import Any, Dict, Optional
-from jinja2 import Environment
+
 from fastapi import Request
+from jinja2 import Environment
 
 from admin.i18n import i18n
 from admin.i18n.middleware import get_current_language
-
 
 def setup_i18n_jinja2(env: Environment):
     """

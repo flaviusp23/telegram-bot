@@ -14,15 +14,13 @@ Usage:
     python scripts/check_admin_health.py [--url http://localhost:8000] [--verbose]
 """
 
+from datetime import datetime
+import argparse
+import json
 import sys
 import time
-import json
-import argparse
-from typing import Dict, List, Tuple, Optional
-from datetime import datetime
+
 import requests
-from requests.exceptions import ConnectionError, Timeout, RequestException
-from urllib.parse import urljoin
 
 # Color codes for terminal output
 class Colors:

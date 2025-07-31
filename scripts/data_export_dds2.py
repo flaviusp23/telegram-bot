@@ -2,25 +2,26 @@
 
 This module handles exporting both legacy and DDS-2 questionnaire data.
 """
-import os
-import xml.etree.ElementTree as ET
-from xml.dom import minidom
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional, Tuple
+import os
 
-try:
-    import pandas as pd
-    import matplotlib.pyplot as plt
-    import matplotlib.dates as mdates
-    GRAPHS_AVAILABLE = True
-except ImportError:
-    GRAPHS_AVAILABLE = False
+import matplotlib.dates as mdates
+import matplotlib.pyplot as plt
+import pandas as pd
 
-from database.models import User, Response
-from database.constants import QuestionTypes, ResponseValues
+import xml.etree.ElementTree as ET
+from xml.dom import minidom
+
+import matplotlib.dates as mdates
+import matplotlib.pyplot as plt
+import pandas as pd
+
 from bot_config.bot_constants import (
     XMLConstants, ExportSettings, BotSettings, GraphSettings
 )
+from database.constants import QuestionTypes, ResponseValues
+from database.models import User, Response
 
 
 class DDS2DataExporter:
@@ -75,31 +76,62 @@ class DDS2DataExporter:
     
     def _calculate_statistics(self, responses: List[Response], start_date: datetime, 
                              end_date: datetime) -> Dict[str, any]:
-        """Calculate statistics including DDS-2 metrics"""
+        """Calculate statistics including DDS-2 metrics.
+        
+        Args:
+            responses: List of user responses
+            start_date: Start date for statistics
+            end_date: End date for statistics
+            
+        Returns:
+            Dictionary of calculated statistics
+        """
         stats = {
             XMLConstants.TOTAL_RESPONSES_FIELD: len(responses)
         }
         
-        # Check if this is DDS-2 data or legacy data
-        dds2_responses = [r for r in responses if r.question_type in QuestionTypes.get_dds2_types()]
-        legacy_responses = [r for r in responses if r.question_type in [QuestionTypes.DISTRESS_CHECK, QuestionTypes.SEVERITY_RATING]]
+        # Separate responses by type
+        response_groups = self._group_responses_by_type(responses)
         
-        if dds2_responses:
-            # Calculate DDS-2 statistics
-            dds2_stats = self._calculate_dds2_statistics(dds2_responses, start_date, end_date)
+        if response_groups['dds2']:
+            dds2_stats = self._calculate_dds2_statistics(
+                response_groups['dds2'], start_date, end_date
+            )
             stats.update(dds2_stats)
         
-        if legacy_responses:
-            # Calculate legacy statistics
-            legacy_stats = self._calculate_legacy_statistics(legacy_responses, start_date, end_date)
+        if response_groups['legacy']:
+            legacy_stats = self._calculate_legacy_statistics(
+                response_groups['legacy'], start_date, end_date
+            )
             stats.update(legacy_stats)
         
         return stats
     
-    def _calculate_dds2_statistics(self, responses: List[Response], start_date: datetime, 
-                                  end_date: datetime) -> Dict[str, any]:
-        """Calculate DDS-2 specific statistics"""
-        # Group responses by timestamp to calculate total scores
+    def _group_responses_by_type(self, responses: List[Response]) -> Dict[str, List[Response]]:
+        """Group responses by questionnaire type.
+        
+        Args:
+            responses: List of all responses
+            
+        Returns:
+            Dictionary with 'dds2' and 'legacy' response lists
+        """
+        return {
+            'dds2': [r for r in responses if r.question_type in QuestionTypes.get_dds2_types()],
+            'legacy': [r for r in responses if r.question_type in [
+                QuestionTypes.DISTRESS_CHECK, QuestionTypes.SEVERITY_RATING
+            ]]
+        }
+    
+    def _group_dds2_sessions(self, responses: List[Response]) -> Dict[str, Dict[str, int]]:
+        """Group DDS-2 responses into sessions.
+        
+        Args:
+            responses: List of DDS-2 responses
+            
+        Returns:
+            Dictionary of sessions with Q1 and Q2 scores
+        """
         sessions = {}
         for r in responses:
             session_key = r.response_timestamp.strftime("%Y-%m-%d %H")
@@ -111,7 +143,17 @@ class DDS2DataExporter:
             elif r.question_type == QuestionTypes.DDS2_Q2_FAILING:
                 sessions[session_key]['q2'] = int(r.response_value)
         
-        # Calculate total scores and distress levels
+        return sessions
+    
+    def _calculate_session_scores(self, sessions: Dict[str, Dict[str, int]]) -> Tuple[List[int], Dict[str, int]]:
+        """Calculate total scores and distress levels from sessions.
+        
+        Args:
+            sessions: Dictionary of sessions
+            
+        Returns:
+            Tuple of (total_scores, distress_level_counts)
+        """
         total_scores = []
         distress_levels = {'low': 0, 'moderate': 0, 'high': 0}
         
@@ -123,7 +165,50 @@ class DDS2DataExporter:
                 level = ResponseValues.calculate_dds2_distress_level(total_score)
                 distress_levels[level] += 1
         
-        stats = {
+        return total_scores, distress_levels
+    
+    def _calculate_dds2_statistics(self, responses: List[Response], start_date: datetime, 
+                                  end_date: datetime) -> Dict[str, any]:
+        """Calculate DDS-2 specific statistics.
+        
+        Args:
+            responses: List of DDS-2 responses
+            start_date: Start date for statistics
+            end_date: End date for statistics
+            
+        Returns:
+            Dictionary of DDS-2 statistics
+        """
+        # Group responses into sessions
+        sessions = self._group_dds2_sessions(responses)
+        
+        # Calculate scores and distress levels
+        total_scores, distress_levels = self._calculate_session_scores(sessions)
+        
+        # Build statistics dictionary
+        stats = self._build_dds2_stats_dict(total_scores, distress_levels)
+        
+        # Calculate response rate
+        days = (end_date - start_date).days + 1
+        expected_responses = days * ExportSettings.EXPECTED_RESPONSES_PER_DAY
+        stats['dds2_response_rate'] = (
+            (len(total_scores) / expected_responses * 100) 
+            if expected_responses > 0 else 0
+        )
+        
+        return stats
+    
+    def _build_dds2_stats_dict(self, total_scores: List[int], distress_levels: Dict[str, int]) -> Dict[str, any]:
+        """Build DDS-2 statistics dictionary.
+        
+        Args:
+            total_scores: List of total session scores
+            distress_levels: Count of each distress level
+            
+        Returns:
+            Dictionary of statistics
+        """
+        return {
             'dds2_sessions_completed': len(total_scores),
             'dds2_average_score': sum(total_scores) / len(total_scores) if total_scores else 0,
             'dds2_min_score': min(total_scores) if total_scores else 0,
@@ -131,15 +216,11 @@ class DDS2DataExporter:
             'dds2_low_distress_count': distress_levels['low'],
             'dds2_moderate_distress_count': distress_levels['moderate'],
             'dds2_high_distress_count': distress_levels['high'],
-            'dds2_high_distress_percentage': (distress_levels['high'] / len(total_scores) * 100) if total_scores else 0
+            'dds2_high_distress_percentage': (
+                (distress_levels['high'] / len(total_scores) * 100) 
+                if total_scores else 0
+            )
         }
-        
-        # Calculate response rate
-        days = (end_date - start_date).days + 1
-        expected_responses = days * ExportSettings.EXPECTED_RESPONSES_PER_DAY
-        stats['dds2_response_rate'] = (len(total_scores) / expected_responses * 100) if expected_responses > 0 else 0
-        
-        return stats
     
     def _calculate_legacy_statistics(self, responses: List[Response], start_date: datetime, 
                                     end_date: datetime) -> Dict[str, any]:
@@ -350,8 +431,9 @@ class DDS2DataExporter:
     def _generate_legacy_graphs(self, responses: List[Response], user: User, start_date: datetime, 
                                end_date: datetime, output_dir: str):
         """Generate legacy questionnaire graphs (existing functionality)"""
-        # This would include the existing graph generation code for legacy data
-        pass
+        # Legacy graph generation not implemented yet
+        # This is a placeholder for future migration of legacy visualization code
+        logger.info(f"Legacy graph generation skipped for user {user.id} - not implemented")
     
     def _save_pretty_xml(self, root, filepath):
         """Save XML with pretty formatting"""

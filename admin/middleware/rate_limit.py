@@ -5,18 +5,15 @@ Implements token bucket algorithm with Redis backend for distributed rate limiti
 Falls back to in-memory storage if Redis is not available.
 """
 
-import time
-import asyncio
 from typing import Dict, Optional, Tuple
-from collections import defaultdict
-from contextlib import asynccontextmanager
+import asyncio
+import time
 
 from fastapi import Request, HTTPException, status
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from admin.core.config import settings
-
 
 class RateLimitExceeded(HTTPException):
     """Exception raised when rate limit is exceeded"""

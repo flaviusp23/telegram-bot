@@ -9,13 +9,8 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
-import sys
-from pathlib import Path
 
-# Add parent directory to path for imports
-sys.path.append(str(Path(__file__).parent.parent.parent))
 import database.encryption
-
 
 # revision identifiers, used by Alembic.
 revision: str = '015023907239'

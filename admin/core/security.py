@@ -13,14 +13,14 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional, Union, Dict, Any
 import re
 
-from jose import JWTError, jwt
-from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
+from jose import JWTError, jwt
+from passlib.context import CryptContext
 from pydantic import BaseModel
 
-# Import configuration from config module
 from .config import (
+
     SECRET_KEY,
     ALGORITHM,
     ACCESS_TOKEN_EXPIRE_MINUTES,

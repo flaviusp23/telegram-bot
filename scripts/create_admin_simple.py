@@ -1,19 +1,20 @@
 #!/usr/bin/env python3
 """Simple admin user creation script"""
 
-import sys
 from pathlib import Path
+import os
+import sys
+
+# Add parent directory to path
 sys.path.append(str(Path(__file__).parent.parent))
 
 from admin.core.security import hash_password
 from admin.models.admin import AdminUser, AdminRole
 from database.database import SessionLocal
 
+
 def create_admin_user():
-    """Create a simple admin user for testing"""
-    
-    import os
-    
+    """Create an admin user with credentials from environment variables."""
     # Get admin credentials from environment or use defaults
     username = os.getenv("ADMIN_USERNAME", "admin")
     email = os.getenv("ADMIN_EMAIL", "admin@example.com")

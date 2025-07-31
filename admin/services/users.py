@@ -2,14 +2,14 @@
 Patient service for handling patient-related business logic.
 """
 
-import re
-from typing import Optional, Dict, Any, List, Tuple
 from datetime import datetime
+from typing import Optional, Dict, Any, List, Tuple
+import re
+
+from sqlalchemy import or_, func
 from sqlalchemy.orm import Session
-from sqlalchemy import and_, or_, func
 
 from database.models import User, UserStatus, Response
-
 
 class UserService:
     """Service class for patient-related operations."""

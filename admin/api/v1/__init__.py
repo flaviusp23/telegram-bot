@@ -1,13 +1,12 @@
 """
 API v1 router aggregation module.
 """
+
 from fastapi import APIRouter
+from admin.api.v1 import auth, users, analytics, export, audit
 
 # Create the main v1 router
 router = APIRouter()
-
-# Import and include individual route modules here
-from admin.api.v1 import auth, users, analytics, export, audit
 
 # Include the auth router (prefix already defined in auth.py)
 router.include_router(auth.router)

@@ -3,9 +3,9 @@ Error handling utilities for consistent API error responses.
 """
 
 from typing import Optional, Dict, Any
+
 from fastapi import HTTPException, status
 from fastapi.responses import JSONResponse
-
 
 class APIError(HTTPException):
     """Base API error with consistent format."""

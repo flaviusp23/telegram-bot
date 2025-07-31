@@ -1,256 +1,119 @@
-"""Consolidated decorators for the diabetes monitoring bot.
-
-This module merges all decorators from user_decorators.py and db_decorators.py,
-resolving duplicate functions and providing a unified interface.
-
-Naming conventions:
-- Variables: snake_case
-  - user (for user objects)
-  - telegram_id (not telegramId)
-- Function parameters: Descriptive names in snake_case
-"""
+"""Decorators for the diabetes monitoring bot."""
 import functools
 import logging
-from typing import Callable, Any, Optional, TypeVar, ParamSpec
+from datetime import datetime
+from time import time
+from typing import Callable, Optional, TypeVar, ParamSpec
+
 from telegram import Update
 from telegram.ext import ContextTypes
 
+from bot_config.bot_constants import BotMessages
+from config import ADMIN_TELEGRAM_IDS, IS_DEVELOPMENT
 from database import get_user_by_telegram_id, db_session_context
 from database.models import User
-from bot_config.bot_constants import BotMessages
+
+# Type definitions
+P = ParamSpec('P')
+T = TypeVar('T')
 
 logger = logging.getLogger(__name__)
 
-# Type variables for better type hints
-P = ParamSpec('P')
-R = TypeVar('R')
-T = TypeVar('T')
 
-
-def require_registered_user(func: Callable[P, R]) -> Callable[P, R]:
-    """
-    Decorator that ensures the user is registered before executing the function.
-    
-    This decorator:
-    1. Extracts the telegram_id from the update
-    2. Checks if the user exists in the database
-    3. If not registered, sends an error message and returns
-    4. If registered, passes the user object to the decorated function
-    
-    The decorated function must accept 'user' as a keyword argument.
-    
-    Args:
-        func: The function to decorate
-        
-    Returns:
-        The decorated function
-    """
+def with_user_context(func: Callable) -> Callable:
+    """Decorator that provides user context without requiring registration."""
     @functools.wraps(func)
-    async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE, *args: P.args, **kwargs: P.kwargs) -> Optional[R]:
-        # Extract telegram user info
-        telegram_user = update.effective_user
-        if not telegram_user:
-            logger.error("No effective user found in update")
-            return None
-            
-        telegram_id = str(telegram_user.id)
+    async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE, *args, **kwargs):
+        telegram_id = str(update.effective_user.id)
         
-        # Check if user is registered
         with db_session_context(commit=False) as db:
             user = get_user_by_telegram_id(db, telegram_id)
-            if not user:
-                # Determine which message to use based on the function
-                if func.__name__ == 'questionnaire':
-                    message = BotMessages.PLEASE_REGISTER_FIRST
-                else:
-                    message = BotMessages.NOT_REGISTERED
-                    
-                await update.message.reply_text(message)
-                return None
-            
-            # Pass the user object to the decorated function
-            kwargs['user'] = user
-            return await func(update, context, *args, **kwargs)
+            # Pass user (can be None) to the wrapped function
+            return await func(update, context, user, *args, **kwargs)
     
     return wrapper
 
 
-def with_user_context(func: Callable[P, R]) -> Callable[P, R]:
-    """
-    Decorator that automatically fetches user and stores in context.
-    
-    This decorator:
-    1. Fetches the user from the database
-    2. Stores user info in the context for use by callbacks
-    3. Does not require user registration (useful for start command)
-    
-    Args:
-        func: The function to decorate
-        
-    Returns:
-        The decorated function
-    """
+def require_registered_user(func: Callable) -> Callable:
+    """Decorator to ensure user is registered before accessing a command."""
     @functools.wraps(func)
-    async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE, *args: P.args, **kwargs: P.kwargs) -> R:
-        # Extract telegram user info
-        telegram_user = update.effective_user
-        if telegram_user:
-            telegram_id = str(telegram_user.id)
+    async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE, *args, **kwargs):
+        telegram_id = str(update.effective_user.id)
+        
+        with db_session_context(commit=False) as db:
+            user = get_user_by_telegram_id(db, telegram_id)
             
-            # Try to get user from database
-            with db_session_context(commit=False) as db:
-                user = get_user_by_telegram_id(db, telegram_id)
-                if user:
-                    # Store user info in context
-                    context.user_data['user_id'] = user.id
-                    context.user_data['user_first_name'] = user.first_name
-                    context.user_data['user'] = user
-                    kwargs['user'] = user
+            if not user:
+                await update.message.reply_text(BotMessages.PLEASE_REGISTER_FIRST)
+                return
+            
+            # Pass user to the wrapped function
+            return await func(update, context, user, *args, **kwargs)
+    
+    return wrapper
+
+
+def admin_only(telegram_ids: Optional[list] = None):
+    """Decorator to restrict access to admin users only."""
+    def decorator(func: Callable) -> Callable:
+        @functools.wraps(func)
+        async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE, *args, **kwargs):
+            user_id = str(update.effective_user.id)
+            allowed_ids = telegram_ids or ADMIN_TELEGRAM_IDS
+            
+            if user_id not in allowed_ids:
+                await update.message.reply_text(BotMessages.ADMIN_ONLY_ACCESS)
+                return
+            
+            return await func(update, context, *args, **kwargs)
+        return wrapper
+    return decorator
+
+
+def update_last_interaction(func: Callable) -> Callable:
+    """Decorator to update user's last interaction timestamp."""
+    @functools.wraps(func)
+    async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE, user: User, *args, **kwargs):
+        # Update last interaction
+        with db_session_context() as db:
+            db_user = db.query(User).filter(User.id == user.id).first()
+            if db_user:
+                db_user.last_interaction = datetime.utcnow()
+        
+        return await func(update, context, user, *args, **kwargs)
+    
+    return wrapper
+
+
+def log_command_usage(func: Callable) -> Callable:
+    """Decorator to log command usage."""
+    @functools.wraps(func)
+    async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE, *args, **kwargs):
+        user = update.effective_user
+        command = update.message.text if update.message else "Unknown"
+        
+        logger.info(f"Command '{command}' used by user {user.id} ({user.username or 'No username'})")
         
         return await func(update, context, *args, **kwargs)
     
     return wrapper
 
 
-def admin_only(admin_telegram_ids: Optional[list[str]] = None):
-    """
-    Decorator that restricts function access to admin users only.
-    
-    Args:
-        admin_telegram_ids: List of telegram IDs that are admins.
-                           If None, will check for ADMIN_TELEGRAM_IDS in config.
-                           
-    Returns:
-        The decorator function
-    """
-    def decorator(func: Callable[P, R]) -> Callable[P, R]:
-        @functools.wraps(func)
-        async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE, *args: P.args, **kwargs: P.kwargs) -> Optional[R]:
-            # Get admin IDs
-            admin_ids = admin_telegram_ids
-            if admin_ids is None:
-                # Try to import from config
-                try:
-                    from config import ADMIN_TELEGRAM_IDS
-                    admin_ids = ADMIN_TELEGRAM_IDS
-                except ImportError:
-                    admin_ids = []
-            
-            # Check if user is admin
-            telegram_user = update.effective_user
-            if not telegram_user or str(telegram_user.id) not in admin_ids:
-                await update.message.reply_text(BotMessages.ADMIN_ONLY_ACCESS)
-                return None
-                
-            return await func(update, context, *args, **kwargs)
-        
-        return wrapper
-    return decorator
-
-
-def log_command_usage(func: Callable[P, R]) -> Callable[P, R]:
-    """
-    Decorator that logs command usage for analytics.
-    
-    Args:
-        func: The function to decorate
-        
-    Returns:
-        The decorated function
-    """
-    @functools.wraps(func)
-    async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE, *args: P.args, **kwargs: P.kwargs) -> R:
-        telegram_user = update.effective_user
-        command_name = func.__name__
-        
-        if telegram_user:
-            logger.info(f"Command /{command_name} called by user {telegram_user.id} ({telegram_user.first_name})")
-        else:
-            logger.info(f"Command /{command_name} called (no user info)")
-            
-        try:
-            result = await func(update, context, *args, **kwargs)
-            logger.info(f"Command /{command_name} completed successfully")
-            return result
-        except Exception as e:
-            logger.error(f"Command /{command_name} failed with error: {e}")
-            raise
-    
-    return wrapper
-
-
-def update_last_interaction(func: Callable[P, R]) -> Callable[P, R]:
-    """
-    Decorator that updates the user's last interaction timestamp.
-    
-    This decorator should be used with require_registered_user to ensure
-    the user exists.
-    
-    Args:
-        func: The function to decorate
-        
-    Returns:
-        The decorated function
-    """
-    @functools.wraps(func)
-    async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE, *args: P.args, **kwargs: P.kwargs) -> R:
-        # Execute the wrapped function first
-        result = await func(update, context, *args, **kwargs)
-        
-        # Update last interaction if user is provided
-        if 'user' in kwargs and kwargs['user']:
-            user = kwargs['user']
-            try:
-                from datetime import datetime
-                with db_session_context() as db:
-                    user_record = db.query(User).filter(User.id == user.id).first()
-                    if user_record:
-                        user_record.last_interaction = datetime.utcnow()
-                        logger.debug(f"Updated last interaction for user {user.telegram_id}")
-            except Exception as e:
-                logger.error(f"Failed to update last interaction: {e}")
-        
-        return result
-    
-    return wrapper
-
-
 def rate_limit(max_calls: int = 5, period_seconds: int = 60):
-    """
-    Decorator that implements rate limiting per user.
+    """Rate limiting decorator to prevent spam."""
+    user_calls = {}
     
-    Args:
-        max_calls: Maximum number of calls allowed within the period
-        period_seconds: Time period in seconds
-        
-    Returns:
-        The decorator function
-    """
-    # Store call times per user
-    user_calls: dict[str, list[float]] = {}
-    
-    def decorator(func: Callable[P, R]) -> Callable[P, R]:
+    def decorator(func: Callable[P, T]) -> Callable[P, T]:
         @functools.wraps(func)
-        async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE, *args: P.args, **kwargs: P.kwargs) -> Optional[R]:
-            from time import time
-            
-            # Skip rate limiting in development mode
-            try:
-                from config import IS_DEVELOPMENT
-                if IS_DEVELOPMENT:
-                    return await func(update, context, *args, **kwargs)
-            except ImportError:
-                pass
-            
-            # Get user ID
-            telegram_user = update.effective_user
-            if not telegram_user:
+        async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE, *args, **kwargs):
+            # Skip rate limiting in development
+            if IS_DEVELOPMENT:
                 return await func(update, context, *args, **kwargs)
-                
-            user_id = str(telegram_user.id)
+            
+            user_id = str(update.effective_user.id)
             current_time = time()
             
-            # Initialize user's call list if needed
+            # Initialize or clean old calls
             if user_id not in user_calls:
                 user_calls[user_id] = []
             
@@ -263,15 +126,12 @@ def rate_limit(max_calls: int = 5, period_seconds: int = 60):
             # Check rate limit
             if len(user_calls[user_id]) >= max_calls:
                 await update.message.reply_text(BotMessages.RATE_LIMIT_EXCEEDED)
-                return None
+                return
             
             # Record this call
             user_calls[user_id].append(current_time)
             
-            # Execute function
             return await func(update, context, *args, **kwargs)
         
         return wrapper
     return decorator
-
-

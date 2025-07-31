@@ -2,10 +2,10 @@
 Pydantic schemas for patient-related endpoints.
 """
 
-from typing import Optional, List, Any
 from datetime import datetime
-from pydantic import BaseModel, Field, EmailStr, validator
+from typing import Optional, List, Any
 
+from pydantic import BaseModel, Field, EmailStr, validator
 
 class UserBase(BaseModel):
     """Base patient schema."""

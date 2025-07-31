@@ -54,12 +54,29 @@ async def main():
         else:
             logger.warning(f"❌ {var} is NOT set")
     
-    # Check for alternative database configs
-    db_configs = ['MYSQL_URL', 'MYSQLHOST', 'MYSQLUSER', 'MYSQLDATABASE', 'MYSQLPASSWORD', 'MYSQLPORT']
-    logger.info("\nChecking for alternative database configurations:")
-    for var in db_configs:
-        if os.getenv(var):
-            logger.info(f"  Found: {var} = {'***hidden***' if 'PASS' in var else os.getenv(var)}")
+    # Check for ALL environment variables that might be database-related
+    logger.info("\nAll environment variables containing 'SQL', 'DB', or 'DATABASE':")
+    for key, value in os.environ.items():
+        if any(word in key.upper() for word in ['SQL', 'DB', 'DATABASE']):
+            if any(sensitive in key.upper() for sensitive in ['PASSWORD', 'PASS', 'KEY', 'SECRET']):
+                logger.info(f"  {key} = ***hidden*** (length: {len(value)})")
+            else:
+                logger.info(f"  {key} = {value}")
+    
+    # Test database connection attempt
+    logger.info("\nTesting database connection...")
+    try:
+        from database.database import SQLALCHEMY_DATABASE_URL
+        logger.info(f"Database URL constructed: {SQLALCHEMY_DATABASE_URL[:50]}...")
+        
+        from sqlalchemy import create_engine, text
+        engine = create_engine(SQLALCHEMY_DATABASE_URL)
+        with engine.connect() as conn:
+            result = conn.execute(text("SELECT 1"))
+            result.fetchone()
+        logger.info("✅ Database connection successful!")
+    except Exception as e:
+        logger.error(f"❌ Database connection failed: {e}")
     
     # Test bot connection
     success = await test_bot()

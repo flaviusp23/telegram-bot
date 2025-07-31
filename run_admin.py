@@ -36,7 +36,7 @@ from admin.core.config import settings
 
 def validate_settings():
     """Validate required settings are present."""
-    required = ['DB_HOST', 'DB_USER', 'DB_NAME', 'JWT_SECRET_KEY']
+    required = ['DB_HOST', 'DB_USER', 'DB_NAME', 'SECRET_KEY']
     missing = []
     
     for setting in required:

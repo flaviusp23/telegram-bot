@@ -167,6 +167,7 @@ def main():
         logger.info("Using production server configuration")
     
     try:
+        logger.info(f"Starting uvicorn with config: {uvicorn_config}")
         # Run the server
         uvicorn.run(**uvicorn_config)
     except KeyboardInterrupt:

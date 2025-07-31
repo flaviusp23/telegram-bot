@@ -19,6 +19,7 @@ from admin.api.v1 import router as api_v1_router
 from admin.core.config import settings
 from admin.i18n.jinja2 import create_template_context, setup_i18n_jinja2
 from admin.i18n.middleware import I18nMiddleware
+from database.database import SQLALCHEMY_DATABASE_URL
 from admin.middleware.rate_limit import RateLimitMiddleware
 from admin.middleware.validation import RequestValidationMiddleware
 
@@ -74,6 +75,17 @@ else:
 # Setup templates with i18n
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
 setup_i18n_jinja2(templates.env)
+
+# Debug endpoint
+@app.get("/debug")
+async def debug_info():
+    """Debug endpoint to check server status."""
+    return {
+        "status": "ok",
+        "environment": settings.ENVIRONMENT,
+        "database_url": SQLALCHEMY_DATABASE_URL[:50] + "...",
+        "timestamp": datetime.utcnow().isoformat()
+    }
 
 # Include API routers
 app.include_router(api_v1_router, prefix="/api/v1")

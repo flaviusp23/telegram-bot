@@ -7,6 +7,7 @@ This module handles:
 - Connection testing
 """
 import logging
+import os
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import OperationalError, ProgrammingError
@@ -18,8 +19,16 @@ from database.constants import DatabaseSettings
 
 logger = logging.getLogger(__name__)
 
-# Build database URL
-SQLALCHEMY_DATABASE_URL = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}/{DB_NAME}"
+# Build database URL - use Railway's DATABASE_URL if available
+if os.getenv('DATABASE_URL'):
+    # Railway provides DATABASE_URL
+    SQLALCHEMY_DATABASE_URL = os.getenv('DATABASE_URL')
+    # Replace mysql:// with mysql+pymysql:// if needed
+    if SQLALCHEMY_DATABASE_URL.startswith('mysql://'):
+        SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace('mysql://', 'mysql+pymysql://', 1)
+else:
+    # Local development
+    SQLALCHEMY_DATABASE_URL = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}/{DB_NAME}"
 
 # Create engine with connection pooling
 engine = create_engine(

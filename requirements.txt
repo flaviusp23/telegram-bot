@@ -20,17 +20,17 @@ google-generativeai==0.3.2  # For Google Gemini API
 # HTTP client (needed by telegram-bot)
 httpx>=0.24.1,<0.26.0
 
-# Admin Backend Dependencies (optional - not needed for bot-only deployment)
-# fastapi==0.104.1
-# uvicorn[standard]==0.24.0
-# starlette==0.27.0
-# python-jose[cryptography]==3.3.0
-# passlib[bcrypt]==1.7.4
-# bcrypt==4.2.1  # Pinned for Python 3.13 compatibility
-# python-multipart==0.0.6
-# pydantic[email]==2.10.4
-# pydantic-settings==2.7.0
-# jinja2==3.1.2
-# openpyxl==3.1.2
-# reportlab==4.0.8
+# Admin Backend Dependencies
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+starlette==0.27.0
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+bcrypt==4.2.1  # Pinned for Python 3.13 compatibility
+python-multipart==0.0.6
+pydantic[email]==2.10.4
+pydantic-settings==2.7.0
+jinja2==3.1.2
+openpyxl==3.1.2
+reportlab==4.0.8
 

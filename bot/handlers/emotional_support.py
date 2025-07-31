@@ -12,7 +12,7 @@ from bot.decorators import (
     update_last_interaction,
     log_command_usage
 )
-from bot.llm_service import LlamaEmotionalSupport
+from bot.llm_service import get_llm_service
 from bot_config.bot_constants import BotMessages
 from bot_config.llm_constants import (
     ConversationStates, SupportMessages, LLMSettings
@@ -30,8 +30,8 @@ logger = logging.getLogger(__name__)
 # Conversation states
 CHATTING = ConversationStates.CHATTING
 
-# Initialize LLaMA service
-llama_service = LlamaEmotionalSupport()
+# Initialize LLM service (Google Gemini)
+llm_service = get_llm_service()
 
 
 @require_registered_user
@@ -98,7 +98,7 @@ async def handle_support_message(update: Update, context: ContextTypes.DEFAULT_T
         lang_code = context.user_data.get('language', 'en')
         language_name = Languages.NAMES.get(lang_code, 'English')
         
-        ai_response = await llama_service.generate_response(
+        ai_response = await llm_service.generate_response(
             user_message,
             support_context.get('conversation_history', []),
             user_name,

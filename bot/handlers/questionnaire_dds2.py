@@ -76,10 +76,10 @@ def _create_dds2_keyboard(question_num: int, lang: str = 'en') -> InlineKeyboard
         label = Messages.BUTTON_LABELS[f'dds2_{i}'].get(lang, Messages.BUTTON_LABELS[f'dds2_{i}']['en'])
         buttons.append((label, callback_func(i)))
     
-    keyboard = [
-        [InlineKeyboardButton(text, callback_data=data) for text, data in buttons[:3]],
-        [InlineKeyboardButton(text, callback_data=data) for text, data in buttons[3:]]
-    ]
+    # Create vertical layout - one button per row for better visibility
+    keyboard = []
+    for text, data in buttons:
+        keyboard.append([InlineKeyboardButton(text, callback_data=data)])
     
     return InlineKeyboardMarkup(keyboard)
 
@@ -171,6 +171,10 @@ async def handle_dds2_q1_response(
     if not user_id:
         return
     
+    # Initialize dds2_responses if not exists (e.g., bot restart or old callback)
+    if 'dds2_responses' not in context.user_data:
+        context.user_data['dds2_responses'] = {}
+    
     # Store response in context
     context.user_data['dds2_responses']['q1'] = rating
     
@@ -184,12 +188,15 @@ async def handle_dds2_q1_response(
         await send_error_message(query, BotMessages.ERROR_RECORDING_RESPONSE)
         return
     
-    # Send Question 2
+    # Send transition message by editing the current message (removes buttons)
     lang = context.user_data.get('language', 'en')
-    reply_markup = _create_dds2_keyboard(2, lang)
-    question_text = get_message('DDS2_Q2_FAILING', lang)
+    transition_text = get_message('DDS2_TRANSITION', lang)
+    await query.edit_message_text(transition_text)
     
-    await query.edit_message_text(question_text, reply_markup=reply_markup)
+    # Send Question 2 as a NEW message
+    question_text = get_message('DDS2_Q2_FAILING', lang)
+    reply_markup = _create_dds2_keyboard(2, lang)
+    await query.message.reply_text(question_text, reply_markup=reply_markup)
 
 
 def _calculate_dds2_scores(context: ContextTypes.DEFAULT_TYPE, q2_rating: int) -> Dict[str, Any]:
@@ -276,6 +283,10 @@ async def handle_dds2_q2_response(
     user_id = await _get_or_validate_user_id(query, context)
     if not user_id:
         return
+    
+    # Initialize dds2_responses if not exists (e.g., bot restart or old callback)
+    if 'dds2_responses' not in context.user_data:
+        context.user_data['dds2_responses'] = {}
     
     # Store response
     context.user_data['dds2_responses']['q2'] = rating

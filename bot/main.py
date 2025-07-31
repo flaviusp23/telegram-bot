@@ -18,9 +18,10 @@ Naming conventions:
 import logging
 import os
 import sys
+import warnings
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from telegram import Update
+from telegram import Update, BotCommand
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes, ConversationHandler, MessageHandler, filters
 
 from bot.decorators import (
@@ -30,6 +31,7 @@ from bot.handlers import (
     start, register, status, pause_alerts, resume_alerts,
     questionnaire_dds2, button_callback_dds2, export_data
 )
+from bot.handlers.auth import initial_language_callback
 from bot.handlers.language import language_command, language_callback
 from bot.handlers.emotional_support import (
     start_support, handle_support_message, cancel_support, CHATTING,
@@ -114,16 +116,106 @@ async def send_alerts_now(update: Update, context: ContextTypes.DEFAULT_TYPE, us
     await update.message.reply_text(get_message('SEND_ALERTS_COMPLETE', lang))
 
 
+@log_command_usage
+async def done_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle /done command - simple acknowledgment"""
+    from bot.handlers.language import get_user_language
+    from database import db_session_context, get_user_by_telegram_id
+    
+    telegram_id = str(update.effective_user.id)
+    with db_session_context(commit=False) as db:
+        user = get_user_by_telegram_id(db, telegram_id)
+        lang = get_user_language(context, user)
+    
+    # Send acknowledgment based on language
+    if lang == 'es':
+        message = "✅ ¡Hecho! Comando recibido."
+    elif lang == 'ro':
+        message = "✅ Gata! Comandă primită."
+    else:
+        message = "✅ Done! Command received."
+    
+    await update.message.reply_text(message)
+
+
 # Error handler
 async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Log errors"""
     logger.error(LogMessages.ERROR_UPDATE.format(update=update, error=context.error))
 
 
+async def setup_bot_commands(application: Application) -> None:
+    """Set up bot commands for autocomplete in all languages"""
+    # Define commands with descriptions for each language
+    commands_en = [
+        BotCommand("start", "Start the bot"),
+        BotCommand("register", "Register as a new user"),
+        BotCommand("help", "Show help message"),
+        BotCommand("status", "Check your registration status"),
+        BotCommand("language", "Change language preference"),
+        BotCommand("pause", "Pause automatic questionnaires"),
+        BotCommand("resume", "Resume automatic questionnaires"),
+        BotCommand("questionnaire", "Complete diabetes distress questionnaire"),
+        BotCommand("support", "Chat with AI emotional support"),
+        BotCommand("export", "Export your data (XML + graphs)"),
+        BotCommand("health", "Check bot health status"),
+        BotCommand("done", "End current conversation")
+    ]
+    
+    commands_es = [
+        BotCommand("start", "Iniciar el bot"),
+        BotCommand("register", "Registrarse como nuevo usuario"),
+        BotCommand("help", "Mostrar mensaje de ayuda"),
+        BotCommand("status", "Verificar estado de registro"),
+        BotCommand("language", "Cambiar idioma"),
+        BotCommand("pause", "Pausar cuestionarios automáticos"),
+        BotCommand("resume", "Reanudar cuestionarios automáticos"),
+        BotCommand("questionnaire", "Completar cuestionario de estrés"),
+        BotCommand("support", "Chatear con asistente IA"),
+        BotCommand("export", "Exportar tus datos (XML + gráficos)"),
+        BotCommand("health", "Verificar estado del bot"),
+        BotCommand("done", "Terminar conversación actual")
+    ]
+    
+    commands_ro = [
+        BotCommand("start", "Pornește bot-ul"),
+        BotCommand("register", "Înregistrează-te ca utilizator nou"),
+        BotCommand("help", "Afișează mesajul de ajutor"),
+        BotCommand("status", "Verifică starea înregistrării"),
+        BotCommand("language", "Schimbă limba"),
+        BotCommand("pause", "Întrerupe chestionarele automate"),
+        BotCommand("resume", "Reia chestionarele automate"),
+        BotCommand("questionnaire", "Completează chestionarul de stres"),
+        BotCommand("support", "Discută cu asistentul AI"),
+        BotCommand("export", "Exportă datele tale (XML + grafice)"),
+        BotCommand("health", "Verifică starea bot-ului"),
+        BotCommand("done", "Încheie conversația curentă")
+    ]
+    
+    # Add admin command if in development
+    if IS_DEVELOPMENT:
+        commands_en.append(BotCommand("send_now", "Send alerts now (admin)"))
+        commands_es.append(BotCommand("send_now", "Enviar alertas ahora (admin)"))
+        commands_ro.append(BotCommand("send_now", "Trimite alerte acum (admin)"))
+    
+    # Set commands for each language
+    await application.bot.set_my_commands(commands_en, language_code="en")
+    await application.bot.set_my_commands(commands_es, language_code="es")
+    await application.bot.set_my_commands(commands_ro, language_code="ro")
+    
+    # Set default commands (English)
+    await application.bot.set_my_commands(commands_en)
+    
+    logger.info("Bot commands configured for all languages")
+
+
 async def post_init(application: Application) -> None:
     """Initialize the bot and scheduler after startup"""
     bot = application.bot
     logger.info(LogMessages.BOT_INITIALIZING.format(environment=ENVIRONMENT))
+    
+    # Set up bot commands for autocomplete
+    await setup_bot_commands(application)
     
     # Schedule alerts based on environment
     if IS_DEVELOPMENT:
@@ -192,10 +284,12 @@ def main() -> None:
     application.add_handler(CommandHandler("export", export_data))
     application.add_handler(CommandHandler("health", health_check))
     application.add_handler(CommandHandler("send_now", send_alerts_now))
+    application.add_handler(CommandHandler("done", done_command))
     
     # Register callback query handlers
     application.add_handler(CallbackQueryHandler(button_callback_dds2, pattern="^dds2_"))
     application.add_handler(CallbackQueryHandler(language_callback, pattern="^set_language_"))
+    application.add_handler(CallbackQueryHandler(initial_language_callback, pattern="^initial_language_"))
     
     # Add emotional support conversation handler
     support_handler = ConversationHandler(
@@ -206,7 +300,9 @@ def main() -> None:
         states={
             CHATTING: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_support_message)]
         },
-        fallbacks=[CommandHandler("cancel", cancel_support)]
+        fallbacks=[CommandHandler("cancel", cancel_support)],
+        per_message=False,
+        per_chat=False
     )
     application.add_handler(support_handler)
     

@@ -69,6 +69,12 @@ class Messages:
         'ro': "Limba schimbată în Română! 🇷🇴"
     }
     
+    REGISTER_PROMPT = {
+        'en': "To get started, please use the /register command to create your account.",
+        'es': "Para comenzar, por favor usa el comando /register para crear tu cuenta.",
+        'ro': "Pentru a începe, te rog folosește comanda /register pentru a-ți crea contul."
+    }
+    
     # Help command
     HELP_TEXT = {
         'en': """Available commands:
@@ -140,15 +146,22 @@ Chestionarul folosește scala validată DDS-2:
     }
     
     DDS2_Q1_OVERWHELMED = {
-        'en': "Question 1 of 2:\n\nFeeling overwhelmed by the demands of living with diabetes\n\nHow much of a problem is this for you?",
-        'es': "Pregunta 1 de 2:\n\nSentirse agobiado por las exigencias de vivir con diabetes\n\n¿Qué tanto problema es esto para ti?",
-        'ro': "Întrebarea 1 din 2:\n\nTe simți copleșit de cerințele vieții cu diabet\n\nCât de mare este această problemă pentru tine?"
+        'en': "📊 **QUESTION 1 OF 2** 📊\n━━━━━━━━━━━━━━━\n\n❓ Feeling overwhelmed by the demands of living with diabetes\n\n⬇️ How much of a problem is this for you?",
+        'es': "📊 **PREGUNTA 1 DE 2** 📊\n━━━━━━━━━━━━━━━\n\n❓ Sentirse agobiado por las exigencias de vivir con diabetes\n\n⬇️ ¿Qué tanto problema es esto para ti?",
+        'ro': "📊 **ÎNTREBAREA 1 DIN 2** 📊\n━━━━━━━━━━━━━━━\n\n❓ Te simți copleșit de cerințele vieții cu diabet\n\n⬇️ Cât de mare este această problemă pentru tine?"
     }
     
     DDS2_Q2_FAILING = {
-        'en': "Question 2 of 2:\n\nFeeling that I am often failing with my diabetes regimen\n\nHow much of a problem is this for you?",
-        'es': "Pregunta 2 de 2:\n\nSentir que a menudo estoy fallando con mi rutina de diabetes\n\n¿Qué tanto problema es esto para ti?",
-        'ro': "Întrebarea 2 din 2:\n\nSentimentul că deseori eșuez cu regimul meu de diabet\n\nCât de mare este această problemă pentru tine?"
+        'en': "📊 **QUESTION 2 OF 2** 📊\n━━━━━━━━━━━━━━━\n\n❓ Feeling that I am often failing with my diabetes regimen\n\n⬇️ How much of a problem is this for you?",
+        'es': "📊 **PREGUNTA 2 DE 2** 📊\n━━━━━━━━━━━━━━━\n\n❓ Sentir que a menudo estoy fallando con mi rutina de diabetes\n\n⬇️ ¿Qué tanto problema es esto para ti?",
+        'ro': "📊 **ÎNTREBAREA 2 DIN 2** 📊\n━━━━━━━━━━━━━━━\n\n❓ Sentimentul că deseori eșuez cu regimul meu de diabet\n\n⬇️ Cât de mare este această problemă pentru tine?"
+    }
+    
+    # Transition message between questions
+    DDS2_TRANSITION = {
+        'en': "✅ Thank you! Moving to the final question...",
+        'es': "✅ ¡Gracias! Pasando a la última pregunta...",
+        'ro': "✅ Mulțumesc! Trecem la ultima întrebare..."
     }
     
     # DDS-2 Response messages

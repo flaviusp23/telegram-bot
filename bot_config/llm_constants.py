@@ -129,7 +129,10 @@ class SupportMessages:
                   "What aspect of managing diabetes is most challenging for you right now?"),
             'es': ("Veo que estás experimentando un alto nivel de angustia por la diabetes. "
                   "Estoy aquí para escucharte y brindarte apoyo. "
-                  "¿Qué aspecto del manejo de la diabetes es más desafiante para ti en este momento?")
+                  "¿Qué aspecto del manejo de la diabetes es más desafiante para ti en este momento?"),
+            'ro': ("Am observat că experimentezi un nivel ridicat de stres din cauza diabetului. "
+                  "Sunt aici să te ascult și să îți ofer sprijin. "
+                  "Care aspect al gestionării diabetului este cel mai dificil pentru tine acum?")
         },
         'moderate': {
             'en': ("I see you're dealing with some diabetes-related challenges. "
@@ -137,13 +140,18 @@ class SupportMessages:
                   "What's on your mind today?"),
             'es': ("Veo que estás lidiando con algunos desafíos relacionados con la diabetes. "
                   "Es completamente normal sentirse así a veces. "
-                  "¿Qué tienes en mente hoy?")
+                  "¿Qué tienes en mente hoy?"),
+            'ro': ("Văd că te confrunți cu unele provocări legate de diabet. "
+                  "Este complet normal să te simți așa uneori. "
+                  "La ce te gândești astăzi?")
         },
         'low': {
             'en': ("It's great that your diabetes distress is relatively low! "
                   "Is there anything specific you'd like to talk about or any tips you'd like to share?"),
             'es': ("¡Es genial que tu angustia por la diabetes sea relativamente baja! "
-                  "¿Hay algo específico de lo que te gustaría hablar o algún consejo que te gustaría compartir?")
+                  "¿Hay algo específico de lo que te gustaría hablar o algún consejo que te gustaría compartir?"),
+            'ro': ("Este minunat că stresul tău legat de diabet este relativ scăzut! "
+                  "Există ceva specific despre care ai vrea să vorbești sau vreun sfat pe care ai vrea să-l împărtășești?")
         }
     }
     

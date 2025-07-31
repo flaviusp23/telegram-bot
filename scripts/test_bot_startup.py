@@ -54,6 +54,13 @@ async def main():
         else:
             logger.warning(f"❌ {var} is NOT set")
     
+    # Check for alternative database configs
+    db_configs = ['MYSQL_URL', 'MYSQLHOST', 'MYSQLUSER', 'MYSQLDATABASE', 'MYSQLPASSWORD', 'MYSQLPORT']
+    logger.info("\nChecking for alternative database configurations:")
+    for var in db_configs:
+        if os.getenv(var):
+            logger.info(f"  Found: {var} = {'***hidden***' if 'PASS' in var else os.getenv(var)}")
+    
     # Test bot connection
     success = await test_bot()
     

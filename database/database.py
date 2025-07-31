@@ -26,6 +26,19 @@ if os.getenv('DATABASE_URL'):
     # Replace mysql:// with mysql+pymysql:// if needed
     if SQLALCHEMY_DATABASE_URL.startswith('mysql://'):
         SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace('mysql://', 'mysql+pymysql://', 1)
+elif os.getenv('MYSQL_URL'):
+    # Railway MySQL plugin format
+    SQLALCHEMY_DATABASE_URL = os.getenv('MYSQL_URL')
+    if SQLALCHEMY_DATABASE_URL.startswith('mysql://'):
+        SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace('mysql://', 'mysql+pymysql://', 1)
+elif all(os.getenv(var) for var in ['MYSQLHOST', 'MYSQLUSER', 'MYSQLDATABASE', 'MYSQLPASSWORD']):
+    # Railway MySQL individual variables
+    host = os.getenv('MYSQLHOST')
+    user = os.getenv('MYSQLUSER')
+    password = os.getenv('MYSQLPASSWORD')
+    database = os.getenv('MYSQLDATABASE')
+    port = os.getenv('MYSQLPORT', '3306')
+    SQLALCHEMY_DATABASE_URL = f"mysql+pymysql://{user}:{password}@{host}:{port}/{database}"
 else:
     # Local development
     SQLALCHEMY_DATABASE_URL = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}/{DB_NAME}"

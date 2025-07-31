@@ -61,13 +61,17 @@ class BotMessages:
 /status - Check your registration status
 /pause - Pause automatic questionnaires
 /resume - Resume automatic questionnaires
-/questionnaire - Complete the distress questionnaire
+/questionnaire - Complete the DDS-2 questionnaire
 /export - Export your data (XML + graphs)
 /health - Check bot health status
 /help - Show this help message
 
-More features coming soon:
-- AI assistant for emotional support"""
+The questionnaire uses the validated DDS-2 scale:
+• 2 questions about diabetes distress
+• Scale from 1 (not a problem) to 6 (serious problem)
+• Available in English and Spanish
+
+AI assistant for emotional support coming soon!"""
     
     # Health check messages
     HEALTH_STATUS_TEMPLATE = """🏥 Bot Health Status
@@ -126,6 +130,55 @@ Commands:
     # Questionnaire messages
     PLEASE_REGISTER_FIRST = "Please register first using /register"
     
+    # DDS-2 Questionnaire messages
+    DDS2_INTRO = (
+        "Hello {user_name}! 👋\n\n"
+        "Time for your diabetes distress check.\n\n"
+        "I'll ask you 2 quick questions about how diabetes has been affecting you.\n"
+        "Please rate each on a scale from 1 to 6:\n"
+        "• 1 = Not a problem\n"
+        "• 6 = Very serious problem"
+    )
+    
+    DDS2_Q1_OVERWHELMED = (
+        "Question 1 of 2:\n\n"
+        "Feeling overwhelmed by the demands of living with diabetes\n"
+        "(Me siento agobiado por las exigencias de vivir con diabetes)\n\n"
+        "How much of a problem is this for you?"
+    )
+    
+    DDS2_Q2_FAILING = (
+        "Question 2 of 2:\n\n"
+        "Feeling that I am often failing with my diabetes regimen\n"
+        "(Siento que a menudo estoy fallando con mi rutina de diabetes)\n\n"
+        "How much of a problem is this for you?"
+    )
+    
+    # DDS-2 Response messages based on total score
+    DDS2_LOW_DISTRESS_RESPONSE = (
+        "Thank you for completing the questionnaire! 😊\n\n"
+        "Your responses indicate low diabetes distress. That's great!\n"
+        "Keep up the good work with your diabetes management.\n\n"
+        "I'll check in with you again at the next scheduled time."
+    )
+    
+    DDS2_MODERATE_DISTRESS_RESPONSE = (
+        "Thank you for completing the questionnaire. 💙\n\n"
+        "Your responses indicate moderate diabetes distress.\n"
+        "It's normal to feel challenged by diabetes management sometimes.\n\n"
+        "Consider taking some time for self-care today.\n"
+        "The AI assistant feature (coming soon) will provide personalized support."
+    )
+    
+    DDS2_HIGH_DISTRESS_RESPONSE = (
+        "Thank you for sharing your feelings. 🫂\n\n"
+        "Your responses indicate high diabetes distress.\n"
+        "Please consider reaching out to your healthcare team for support.\n\n"
+        "Remember, you don't have to manage this alone.\n"
+        "The AI assistant feature (coming soon) will provide additional emotional support."
+    )
+    
+    # Legacy questionnaire messages (kept for backwards compatibility)
     QUESTIONNAIRE_START = (
         "Hello {user_name}! 👋\n\n"
         "Time for your diabetes distress check.\n\n"
@@ -138,7 +191,7 @@ Commands:
         "Have you experienced diabetes-related distress today?"
     )
     
-    # Distress response messages
+    # Legacy distress response messages
     NO_DISTRESS_RESPONSE = (
         "Great to hear you're doing well! 😊\n\n"
         "Keep up the good work with your diabetes management.\n"
@@ -152,7 +205,7 @@ Commands:
         "5 = Very severe"
     )
     
-    # Severity response messages
+    # Legacy severity response messages
     SEVERITY_MILD_RESPONSE = (
         "Thank you for sharing. It's good that your distress is relatively mild. 🌟\n\n"
         "Remember, it's normal to experience some distress with diabetes management.\n"
@@ -215,28 +268,53 @@ Period: {start_date} to {end_date}
 # Button Labels
 class ButtonLabels:
     """Labels for inline keyboard buttons"""
+    # Legacy labels
     YES = "Yes"
     NO = "No"
     
+    # Legacy severity labels (1-5 scale)
     SEVERITY_1 = "1 - Very mild"
     SEVERITY_2 = "2 - Mild"
     SEVERITY_3 = "3 - Moderate"
     SEVERITY_4 = "4 - Severe"
     SEVERITY_5 = "5 - Very severe"
+    
+    # DDS-2 scale labels (1-6)
+    DDS2_1 = "1"
+    DDS2_2 = "2"
+    DDS2_3 = "3"
+    DDS2_4 = "4"
+    DDS2_5 = "5"
+    DDS2_6 = "6"
 
 
 # Callback Data
 class CallbackData:
     """Callback data values for inline keyboards"""
+    # Legacy callback data
     DISTRESS_YES = "distress_yes"
     DISTRESS_NO = "distress_no"
-    
     SEVERITY_PREFIX = "severity_"
+    
+    # DDS-2 callback data
+    DDS2_PREFIX = "dds2_"
+    DDS2_Q1_PREFIX = "dds2_q1_"
+    DDS2_Q2_PREFIX = "dds2_q2_"
     
     @classmethod
     def severity(cls, level: int) -> str:
-        """Generate severity callback data"""
+        """Generate legacy severity callback data"""
         return f"{cls.SEVERITY_PREFIX}{level}"
+    
+    @classmethod
+    def dds2_q1(cls, level: int) -> str:
+        """Generate DDS-2 question 1 callback data"""
+        return f"{cls.DDS2_Q1_PREFIX}{level}"
+    
+    @classmethod
+    def dds2_q2(cls, level: int) -> str:
+        """Generate DDS-2 question 2 callback data"""
+        return f"{cls.DDS2_Q2_PREFIX}{level}"
 
 
 # Export Settings

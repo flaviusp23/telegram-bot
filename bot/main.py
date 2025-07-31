@@ -37,7 +37,7 @@ from bot.decorators import (
 from bot.scheduler import send_scheduled_alerts
 from bot.handlers import (
     start, register, status, pause_alerts, resume_alerts,
-    questionnaire, button_callback, export_data
+    questionnaire, questionnaire_dds2, button_callback, button_callback_dds2, export_data
 )
 
 # Enable logging
@@ -160,13 +160,22 @@ def main() -> None:
     application.add_handler(CommandHandler("status", status))
     application.add_handler(CommandHandler("pause", pause_alerts))
     application.add_handler(CommandHandler("resume", resume_alerts))
-    application.add_handler(CommandHandler("questionnaire", questionnaire))
+    # Use DDS-2 questionnaire as the default
+    application.add_handler(CommandHandler("questionnaire", questionnaire_dds2))
     application.add_handler(CommandHandler("export", export_data))
     application.add_handler(CommandHandler("health", health_check))
     application.add_handler(CommandHandler("send_now", send_alerts_now))
     
-    # Register callback query handler for buttons
-    application.add_handler(CallbackQueryHandler(button_callback))
+    # Register callback query handlers - DDS-2 first, then legacy
+    async def combined_button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Handle button callbacks, trying DDS-2 first, then legacy"""
+        # Try DDS-2 handler first
+        handled = await button_callback_dds2(update, context)
+        if not handled:
+            # Fall back to legacy handler
+            await button_callback(update, context)
+    
+    application.add_handler(CallbackQueryHandler(combined_button_callback))
     
     # Register error handler
     application.add_error_handler(error_handler)

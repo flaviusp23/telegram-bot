@@ -11,7 +11,7 @@ from telegram import Update
 from telegram.ext import ContextTypes
 
 from database import db_session_context
-from database.models import User
+from database.models import User, Response
 from bot_config.bot_constants import (
     BotMessages, BotSettings, ExportSettings, LogMessages
 )
@@ -53,16 +53,23 @@ def generate_export_files(db, user: User, start_date: datetime, end_date: dateti
     Returns:
         dict: Export results containing stats and graph generation status
     """
-    from scripts.data_export import DataExporter
+    from scripts.data_export_dds2 import DDS2DataExporter
     
     # Create exporter and generate files
-    exporter = DataExporter(db)
+    exporter = DDS2DataExporter()
     
-    # Export XML
-    xml_file = os.path.join(export_dir, ExportSettings.XML_FILENAME)
-    stats = exporter.export_to_xml(user.id, start_date, end_date, xml_file)
+    # Get user responses
+    responses = db.query(Response).filter(
+        Response.user_id == user.id,
+        Response.response_timestamp >= start_date,
+        Response.response_timestamp <= end_date
+    ).order_by(Response.response_timestamp).all()
     
-    # Add period information to stats for the send function
+    # Export XML and get path
+    xml_path = exporter.export_user_data(user, responses, start_date, end_date, export_dir)
+    
+    # Calculate statistics for the summary
+    stats = exporter._calculate_statistics(responses, start_date, end_date)
     stats['period'] = {
         'start': start_date.isoformat(),
         'end': end_date.isoformat()
@@ -71,14 +78,14 @@ def generate_export_files(db, user: User, start_date: datetime, end_date: dateti
     # Generate graphs if matplotlib is available
     graphs_generated = False
     try:
-        exporter.generate_graphs(user.id, start_date, end_date, export_dir)
+        exporter.generate_graphs(responses, user, start_date, end_date, export_dir)
         graphs_generated = True
     except Exception as e:
         logger.warning(LogMessages.WARNING_GRAPHS_NOT_GENERATED.format(error=e))
     
     return {
         'stats': stats,
-        'xml_file': xml_file,
+        'xml_file': xml_path,
         'graphs_generated': graphs_generated
     }
 

@@ -13,33 +13,16 @@ from bot_config.bot_constants import (
     AlertSettings, BotMessages, ButtonLabels, 
     CallbackData, LogMessages
 )
+from bot.handlers.questionnaire_dds2 import send_scheduled_dds2
 
 logger = logging.getLogger(__name__)
 
 
 async def send_questionnaire_to_user(bot, user: User) -> bool:
-    """Send questionnaire to a single user"""
+    """Send DDS-2 questionnaire to a single user"""
     try:
-        # Create the questionnaire keyboard
-        keyboard = [
-            [
-                InlineKeyboardButton(ButtonLabels.YES, callback_data=CallbackData.DISTRESS_YES),
-                InlineKeyboardButton(ButtonLabels.NO, callback_data=CallbackData.DISTRESS_NO)
-            ]
-        ]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        
-        # Personalized message
-        message = BotMessages.SCHEDULED_QUESTIONNAIRE_START.format(first_name=user.first_name)
-        
-        # Send message
-        await bot.send_message(
-            chat_id=int(user.telegram_id),
-            text=message,
-            reply_markup=reply_markup
-        )
-        
-        logger.info(LogMessages.QUESTIONNAIRE_SENT.format(first_name=user.first_name, telegram_id=user.telegram_id))
+        # Use DDS-2 questionnaire
+        await send_scheduled_dds2(bot, user)
         return True
         
     except Forbidden:

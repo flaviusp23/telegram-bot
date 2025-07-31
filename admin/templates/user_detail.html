@@ -146,6 +146,76 @@
         margin-top: 5px;
     }
     
+    .messages-section {
+        background: white;
+        padding: 30px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        margin-bottom: 30px;
+    }
+    
+    .message-item {
+        border-left: 4px solid #2196F3;
+        padding: 15px;
+        margin-bottom: 15px;
+        background: #f8f9fa;
+        border-radius: 0 8px 8px 0;
+    }
+    
+    .message-prompt {
+        font-weight: bold;
+        color: #333;
+        margin-bottom: 8px;
+    }
+    
+    .message-response {
+        color: #666;
+        margin-bottom: 8px;
+        line-height: 1.4;
+    }
+    
+    .message-timestamp {
+        font-size: 12px;
+        color: #999;
+    }
+    
+    .edit-form {
+        display: none;
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 8px;
+        margin-top: 15px;
+    }
+    
+    .edit-form.active {
+        display: block;
+    }
+    
+    .form-group {
+        margin-bottom: 15px;
+    }
+    
+    .form-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: 500;
+        color: #333;
+    }
+    
+    .form-group input {
+        width: 100%;
+        padding: 8px 12px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+    
+    .edit-buttons {
+        display: flex;
+        gap: 10px;
+        margin-top: 15px;
+    }
+    
     /* Mobile patient detail page */
     @media (max-width: 768px) {
         .patient-header {
@@ -317,14 +387,55 @@
     </div>
     
     <div class="patient-header">
-        <h1 id="patient-name" data-i18n="common.loading">{{ _('common.loading') }}</h1>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h1 id="patient-name" data-i18n="common.loading">{{ _('common.loading') }}</h1>
+            <button class="btn btn-outline-primary" onclick="toggleEditForm()" id="edit-btn">
+                ✏️ Edit Details
+            </button>
+        </div>
         <div class="patient-info" id="patient-info">
             <!-- Patient info will be populated here -->
+        </div>
+        
+        <!-- Edit form (hidden by default) -->
+        <div class="edit-form" id="edit-form">
+            <h3>Edit Patient Details</h3>
+            <form id="edit-patient-form">
+                <div class="form-group">
+                    <label for="edit-first-name">First Name</label>
+                    <input type="text" id="edit-first-name" name="first_name" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit-family-name">Family Name</label>
+                    <input type="text" id="edit-family-name" name="family_name" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit-email">Email</label>
+                    <input type="email" id="edit-email" name="email">
+                </div>
+                <div class="form-group">
+                    <label for="edit-phone">Phone Number</label>
+                    <input type="tel" id="edit-phone" name="phone_number">
+                </div>
+                <div class="edit-buttons">
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                    <button type="button" class="btn btn-secondary" onclick="toggleEditForm()">Cancel</button>
+                </div>
+            </form>
         </div>
     </div>
     
     <div class="stats-cards" id="stats-cards">
         <!-- Stats will be populated here -->
+    </div>
+    
+    <div class="messages-section">
+        <h2>🗨️ Telegram Messages</h2>
+        <div id="messages-container">
+            <div style="text-align: center; padding: 40px; color: #666;">
+                Loading messages...
+            </div>
+        </div>
     </div>
     
     <div class="responses-section">
@@ -410,6 +521,22 @@ async function loadPatientData() {
                 <span class="info-value">${patientData.id}</span>
             </div>
             <div class="info-item">
+                <span class="info-label">First Name</span>
+                <span class="info-value">${patientData.first_name || 'Not set'}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Family Name</span>
+                <span class="info-value">${patientData.family_name || 'Not set'}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Email</span>
+                <span class="info-value">${patientData.email || 'Not set'}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">Phone</span>
+                <span class="info-value">${patientData.phone_number || 'Not set'}</span>
+            </div>
+            <div class="info-item">
                 <span class="info-label" data-i18n="patients.telegram_id">${window.erasmusAdmin.translate('patients.telegram_id')}</span>
                 <span class="info-value">${patientData.telegram_id}</span>
             </div>
@@ -431,6 +558,12 @@ async function loadPatientData() {
             </div>
         `;
         
+        // Populate edit form
+        document.getElementById('edit-first-name').value = patientData.first_name || '';
+        document.getElementById('edit-family-name').value = patientData.family_name || '';
+        document.getElementById('edit-email').value = patientData.email || '';
+        document.getElementById('edit-phone').value = patientData.phone_number || '';
+        
         // Load responses
         const responsesData = await window.erasmusAdmin.apiRequest(`/users/${patientId}/responses?limit=1000`);
         allResponses = responsesData;
@@ -441,12 +574,95 @@ async function loadPatientData() {
         // Display responses
         displayResponses(allResponses);
         
+        // Load messages
+        await loadMessages();
+        
     } catch (error) {
         console.error('Failed to load patient data:', error);
         alert(window.erasmusAdmin.translate('errors.generic'));
         window.location.href = '/users';
     }
 }
+
+async function loadMessages() {
+    try {
+        const messages = await window.erasmusAdmin.apiRequest(`/users/${patientId}/interactions?limit=50`);
+        displayMessages(messages);
+    } catch (error) {
+        console.error('Failed to load messages:', error);
+        document.getElementById('messages-container').innerHTML = 
+            '<div style="text-align: center; padding: 40px; color: #999;">No messages found or failed to load.</div>';
+    }
+}
+
+function displayMessages(messages) {
+    const container = document.getElementById('messages-container');
+    
+    if (messages.length === 0) {
+        container.innerHTML = '<div style="text-align: center; padding: 40px; color: #666;">No messages yet.</div>';
+        return;
+    }
+    
+    container.innerHTML = messages.map(message => `
+        <div class="message-item">
+            <div class="message-prompt">
+                <strong>Patient:</strong> ${message.prompt}
+            </div>
+            <div class="message-response">
+                <strong>AI Assistant:</strong> ${message.response}
+            </div>
+            <div class="message-timestamp">
+                ${window.erasmusAdmin.formatDate(message.interaction_timestamp)}
+            </div>
+        </div>
+    `).join('');
+}
+
+function toggleEditForm() {
+    const form = document.getElementById('edit-form');
+    const btn = document.getElementById('edit-btn');
+    
+    if (form.classList.contains('active')) {
+        form.classList.remove('active');
+        btn.textContent = '✏️ Edit Details';
+    } else {
+        form.classList.add('active');
+        btn.textContent = '❌ Cancel Edit';
+    }
+}
+
+// Handle edit form submission
+document.getElementById('edit-patient-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(e.target);
+    const updateData = {};
+    
+    // Only include non-empty fields
+    for (let [key, value] of formData.entries()) {
+        if (value.trim()) {
+            updateData[key] = value.trim();
+        }
+    }
+    
+    try {
+        await window.erasmusAdmin.apiRequest(`/users/${patientId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updateData)
+        });
+        
+        alert('Patient details updated successfully!');
+        toggleEditForm();
+        
+        // Reload patient data
+        await loadPatientData();
+        
+    } catch (error) {
+        console.error('Failed to update patient:', error);
+        alert('Failed to update patient details. Please try again.');
+    }
+});
 
 function calculateStats() {
     const distressResponses = allResponses.filter(r => r.question_type === 'distress_check');

@@ -60,6 +60,17 @@ class ResponseModel(BaseModel):
         from_attributes = True
 
 
+class InteractionModel(BaseModel):
+    """Model for patient-AI chat interactions."""
+    id: int
+    prompt: str
+    response: str
+    interaction_timestamp: datetime
+    
+    class Config:
+        from_attributes = True
+
+
 class PaginatedUsers(BaseModel):
     """Paginated patient list response."""
     items: List[UserResponse]

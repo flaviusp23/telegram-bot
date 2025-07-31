@@ -19,12 +19,12 @@ from sqlalchemy.orm import Session
 from admin.core.permissions import require_admin, require_viewer, AdminUser
 from admin.schemas.users import (
     UserResponse, UserDetailResponse, UserUpdate, 
-    ResponseModel, PaginatedUsers
+    ResponseModel, InteractionModel, PaginatedUsers
 )
 from admin.services.users import UserService
 from admin.utils.audit import create_audit_log, AuditAction, EntityType
 from database.database import get_db
-from database.models import User, UserStatus, Response
+from database.models import User, UserStatus, Response, AssistantInteraction
 
 # Set up logger
 logger = logging.getLogger(__name__)
@@ -454,3 +454,76 @@ async def get_user_responses(
         response_value=response.response_value,
         response_timestamp=response.response_timestamp
     ) for response in responses]
+
+
+@router.get("/{user_id}/interactions", response_model=List[InteractionModel])
+async def get_user_interactions(
+    request: Request,
+    user_id: int,
+    from_date: Optional[datetime] = Query(None, description="Filter interactions from this date"),
+    to_date: Optional[datetime] = Query(None, description="Filter interactions to this date"),
+    limit: int = Query(50, ge=1, le=200, description="Maximum number of interactions to return"),
+    admin_user: AdminUser = Depends(require_viewer),
+    db: Session = Depends(get_db)
+):
+    """
+    Get patient's AI chat interactions (Telegram messages).
+    
+    Required role: Viewer or higher
+    """
+    # Check if patient exists
+    patient = db.query(User).filter(User.id == user_id).first()
+    if not patient:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Patient not found"
+        )
+    
+    # Validate limit
+    if limit > 200:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Limit cannot exceed 200"
+        )
+    
+    # Build query
+    query = db.query(AssistantInteraction).filter(AssistantInteraction.user_id == user_id)
+    
+    if from_date:
+        query = query.filter(AssistantInteraction.interaction_timestamp >= from_date)
+    if to_date:
+        query = query.filter(AssistantInteraction.interaction_timestamp <= to_date)
+    
+    # Get interactions
+    try:
+        interactions = query.order_by(
+            AssistantInteraction.interaction_timestamp.desc()
+        ).limit(limit).all()
+    except Exception as e:
+        logger.error(f"Error fetching patient interactions for {user_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Error fetching patient interactions"
+        )
+    
+    # Log the action
+    await create_audit_log(
+        db=db,
+        admin_id=admin_user.id,
+        action=AuditAction.VIEW_USER_RESPONSES,  # Reusing existing action
+        entity_type=EntityType.PATIENT,
+        entity_id=user_id,
+        changes={"filters": {
+            "from_date": from_date.isoformat() if from_date else None,
+            "to_date": to_date.isoformat() if to_date else None,
+            "limit": limit
+        }},
+        request=request
+    )
+    
+    return [InteractionModel(
+        id=interaction.id,
+        prompt=interaction.prompt,
+        response=interaction.response,
+        interaction_timestamp=interaction.interaction_timestamp
+    ) for interaction in interactions]

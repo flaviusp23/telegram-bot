@@ -301,8 +301,8 @@ def main() -> None:
             CHATTING: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_support_message)]
         },
         fallbacks=[CommandHandler("cancel", cancel_support)],
-        per_message=False,
-        per_chat=False
+        per_chat=True,
+        per_user=True
     )
     application.add_handler(support_handler)
     

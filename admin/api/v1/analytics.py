@@ -24,6 +24,44 @@ from database.models import User, Response
 router = APIRouter()
 
 
+@router.get("/dashboard")
+async def get_dashboard_stats(
+    admin_user: AdminUser = Depends(require_viewer),
+    db: Session = Depends(get_db)
+):
+    """Get dashboard overview statistics."""
+    try:
+        # Get basic counts
+        total_patients = db.query(User).count()
+        total_responses = db.query(Response).count()
+        
+        # Get recent activity count (last 24 hours)
+        yesterday = datetime.now(timezone.utc) - timedelta(days=1)
+        recent_responses = db.query(Response).filter(
+            Response.response_timestamp >= yesterday
+        ).count()
+        
+        recent_registrations = db.query(User).filter(
+            User.registration_date >= yesterday
+        ).count()
+        
+        return {
+            "total_patients": total_patients,
+            "total_responses": total_responses,
+            "recent_responses": recent_responses,
+            "recent_registrations": recent_registrations,
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+    except Exception as e:
+        return {
+            "total_patients": 0,
+            "total_responses": 0,
+            "recent_responses": 0,
+            "recent_registrations": 0,
+            "error": str(e)
+        }
+
+
 @router.get("/recent-activity")
 async def get_recent_activity(
     limit: int = Query(10, ge=1, le=50, description="Number of activities to return"),

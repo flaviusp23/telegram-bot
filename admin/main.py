@@ -136,6 +136,17 @@ async def root(request: Request):
     return templates.TemplateResponse("dashboard.html", context)
 
 
+# Login page route
+@app.get("/login", response_class=HTMLResponse)
+async def login_page(request: Request):
+    """Render the login page."""
+    context = create_template_context(request)
+    context.update({
+        "page_title": "Login"
+    })
+    return templates.TemplateResponse("login.html", context)
+
+
 # Health check
 @app.get("/health")
 async def health_check():

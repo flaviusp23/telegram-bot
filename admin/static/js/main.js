@@ -61,6 +61,10 @@ async function logout() {
         // Clear tokens from localStorage
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
+        
+        // Clear cookie too
+        document.cookie = 'access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC; SameSite=Strict';
+        
         // Update navbar before redirecting
         updateNavbar(false);
         window.location.href = '/login';

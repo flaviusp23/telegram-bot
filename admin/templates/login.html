@@ -154,7 +154,15 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
             // Store JWT tokens in localStorage
             localStorage.setItem('access_token', data.access_token);
             localStorage.setItem('refresh_token', data.refresh_token);
-            window.location.href = '/dashboard';
+            
+            // Also set as httpOnly=false cookie for server-side checks
+            // Note: In production, consider using httpOnly cookies set by the server
+            document.cookie = `access_token=${data.access_token}; path=/; max-age=${60*60*24*7}; SameSite=Strict`;
+            
+            // Redirect to next URL or dashboard
+            const urlParams = new URLSearchParams(window.location.search);
+            const next = urlParams.get('next') || '/dashboard';
+            window.location.href = next;
         } else {
             const error = await response.json();
             document.getElementById('error-message').textContent = error.detail || '{{ _("auth.login_failed") }}';

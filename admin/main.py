@@ -7,13 +7,14 @@ from pathlib import Path
 import logging
 import time
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.exceptions import HTTPException as StarletteHTTPException
 import uvicorn
+from jose import JWTError, jwt
 
 from admin.api.v1 import router as api_v1_router
 from admin.core.config import settings
@@ -125,10 +126,47 @@ async def general_exception_handler(request: Request, exc: Exception):
     )
 
 
+async def check_auth_cookie(request: Request):
+    """Check if user is authenticated via cookie/localStorage (for HTML pages)."""
+    # Check for auth token in cookies or headers
+    token = request.cookies.get("access_token")
+    
+    if not token:
+        # Check Authorization header as fallback
+        auth_header = request.headers.get("authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.split(" ")[1]
+    
+    if not token:
+        return None
+        
+    try:
+        # Import here to avoid circular imports
+        from admin.core.config import SECRET_KEY, ALGORITHM
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        return payload
+    except JWTError:
+        return None
+
+
+async def require_auth_html(request: Request):
+    """Dependency to require authentication for HTML pages."""
+    user = await check_auth_cookie(request)
+    if not user:
+        # Store the original URL to redirect back after login
+        return RedirectResponse(url=f"/login?next={request.url.path}", status_code=303)
+    return user
+
+
 # Root route
 @app.get("/", response_class=HTMLResponse)
 async def root(request: Request):
     """Render the main dashboard."""
+    # Check authentication
+    user = await check_auth_cookie(request)
+    if not user:
+        return RedirectResponse(url="/login", status_code=303)
+    
     context = create_template_context(request)
     context.update({
         "page_title": "Dashboard"
@@ -151,6 +189,11 @@ async def login_page(request: Request):
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard_page(request: Request):
     """Render the dashboard page."""
+    # Check authentication
+    user = await check_auth_cookie(request)
+    if not user:
+        return RedirectResponse(url="/login?next=/dashboard", status_code=303)
+    
     context = create_template_context(request)
     context.update({
         "page_title": "Dashboard"
@@ -162,6 +205,11 @@ async def dashboard_page(request: Request):
 @app.get("/users", response_class=HTMLResponse)
 async def users_page(request: Request):
     """Render the users page."""
+    # Check authentication
+    user = await check_auth_cookie(request)
+    if not user:
+        return RedirectResponse(url="/login?next=/users", status_code=303)
+    
     context = create_template_context(request)
     context.update({
         "page_title": "Patient Management"
@@ -173,6 +221,11 @@ async def users_page(request: Request):
 @app.get("/users/{user_id}", response_class=HTMLResponse)
 async def user_detail_page(request: Request, user_id: int):
     """Render the user detail page."""
+    # Check authentication
+    user = await check_auth_cookie(request)
+    if not user:
+        return RedirectResponse(url=f"/login?next=/users/{user_id}", status_code=303)
+    
     context = create_template_context(request)
     context.update({
         "page_title": "Patient Details",

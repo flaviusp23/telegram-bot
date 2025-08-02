@@ -169,6 +169,14 @@ def check_account_lockout(user: AdminUser) -> bool:
     return False
 
 
+def update_failed_login_attempts(db: Session, user: AdminUser, reset: bool = False):
+    """Update failed login attempts for a user"""
+    # This feature is not implemented yet in the current schema
+    # In a production system, you would track failed attempts and lock accounts
+    # For now, this is a placeholder to prevent 500 errors
+    pass
+
+
 # API Endpoints
 @router.post("/login", response_model=LoginResponse)
 async def login(
@@ -460,3 +468,62 @@ async def change_password(
     db.commit()
     
     return MessageResponse(message="Password changed successfully. Please login again with your new password.")
+
+
+class CreateFirstAdminRequest(BaseModel):
+    """Create first admin request schema"""
+    username: str = Field(..., min_length=3, max_length=50)
+    email: str = Field(..., pattern=r'^[\w\.-]+@[\w\.-]+\.\w+$')
+    password: str = Field(..., min_length=8)
+
+
+@router.post("/create-first-admin", response_model=UserResponse)
+async def create_first_admin(
+    request: CreateFirstAdminRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Create the first admin user if no admin users exist.
+    
+    This endpoint is available only when there are no admin users in the system.
+    """
+    # Check if any admin users exist
+    existing_admin = db.query(AdminUser).first()
+    if existing_admin:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Admin users already exist. Use normal registration process."
+        )
+    
+    # Validate password strength
+    password_check = validate_password_strength(request.password)
+    if not password_check["valid"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=password_check["message"]
+        )
+    
+    # Create the admin user
+    new_admin = AdminUser(
+        username=request.username,
+        email=request.email,
+        password_hash=hash_password(request.password),
+        role=AdminRole.super_admin,
+        is_active=True
+    )
+    
+    db.add(new_admin)
+    db.commit()
+    db.refresh(new_admin)
+    
+    logger.info(f"First admin user created: {new_admin.username}")
+    
+    return UserResponse(
+        id=new_admin.id,
+        username=new_admin.username,
+        email=new_admin.email,
+        role=new_admin.role.value,
+        is_active=new_admin.is_active,
+        created_at=new_admin.created_at,
+        last_login=new_admin.last_login
+    )

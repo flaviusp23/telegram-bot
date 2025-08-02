@@ -147,6 +147,43 @@ async def login_page(request: Request):
     return templates.TemplateResponse("login.html", context)
 
 
+# Users page route
+@app.get("/users", response_class=HTMLResponse)
+async def users_page(request: Request):
+    """Render the users page."""
+    context = create_template_context(request)
+    context.update({
+        "page_title": "Patient Management"
+    })
+    return templates.TemplateResponse("users.html", context)
+
+
+# User detail page route
+@app.get("/users/{user_id}", response_class=HTMLResponse)
+async def user_detail_page(request: Request, user_id: int):
+    """Render the user detail page."""
+    context = create_template_context(request)
+    context.update({
+        "page_title": "Patient Details",
+        "user_id": user_id
+    })
+    return templates.TemplateResponse("user_detail.html", context)
+
+
+# I18n route
+@app.get("/i18n/{language}.json")
+async def get_i18n_file(language: str):
+    """Serve i18n JSON files."""
+    from fastapi.responses import FileResponse
+    import os
+    
+    file_path = Path(__file__).parent / "static" / "i18n" / f"{language}.json"
+    if file_path.exists():
+        return FileResponse(file_path, media_type="application/json")
+    else:
+        raise StarletteHTTPException(status_code=404, detail="Language file not found")
+
+
 # Health check
 @app.get("/health")
 async def health_check():

@@ -38,7 +38,7 @@ class RequestValidator:
     # Patterns that might indicate SQL injection
     SQL_PATTERNS = [
         r"(\bunion\b.*\bselect\b|\bselect\b.*\bunion\b)",
-        r"(;|\||`|\\x[0-9a-f]+|\\[0-9]+)",
+        r"(;\s*\b(drop|delete|insert|update|exec)\b|\\x[0-9a-f]+|\\[0-9]+)",
         r"(\bdrop\b.*\btable\b|\bdelete\b.*\bfrom\b)",
         r"(\binsert\b.*\binto\b|\bupdate\b.*\bset\b)",
         r"(\bexec\b|\bexecute\b)\s*\(",
@@ -133,7 +133,8 @@ class RequestValidator:
         
         elif isinstance(data, str):
             # Check string values for injection
-            if cls.check_sql_injection(data) or cls.check_xss(data):
+            # Temporarily skip password field to avoid false positives
+            if path != "password" and (cls.check_sql_injection(data) or cls.check_xss(data)):
                 raise ValidationError(f"Suspicious content in field: {path}")
     
     @classmethod

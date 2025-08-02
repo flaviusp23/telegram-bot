@@ -147,6 +147,17 @@ async def login_page(request: Request):
     return templates.TemplateResponse("login.html", context)
 
 
+# Dashboard route (redirect from root)
+@app.get("/dashboard", response_class=HTMLResponse)
+async def dashboard_page(request: Request):
+    """Render the dashboard page."""
+    context = create_template_context(request)
+    context.update({
+        "page_title": "Dashboard"
+    })
+    return templates.TemplateResponse("dashboard.html", context)
+
+
 # Users page route
 @app.get("/users", response_class=HTMLResponse)
 async def users_page(request: Request):

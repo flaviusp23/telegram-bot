@@ -14,6 +14,7 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
+from sqlalchemy import func, cast, Float, Integer
 
 from admin.core.permissions import require_viewer, AdminUser
 from admin.models.admin import AuditLog, AdminUser as AdminUserModel
@@ -33,6 +34,7 @@ async def get_dashboard_stats(
     try:
         # Get basic counts
         total_patients = db.query(User).count()
+        active_patients = db.query(User).filter(User.status == 'active').count()
         total_responses = db.query(Response).count()
         
         # Get recent activity count (last 24 hours)
@@ -41,23 +43,76 @@ async def get_dashboard_stats(
             Response.response_timestamp >= yesterday
         ).count()
         
-        recent_registrations = db.query(User).filter(
-            User.registration_date >= yesterday
+        # Calculate metrics
+        # Average severity (DDS-2 questions use 1-6 scale)
+        avg_severity = db.query(Response).filter(
+            Response.question_type.in_(['dds2_q1_overwhelmed', 'dds2_q2_failing'])
+        ).with_entities(
+            func.avg(cast(Response.response_value, Float))
+        ).scalar() or 3.0
+        
+        # Distress percentage (responses >= 3 are considered distressed)
+        total_dds2 = db.query(Response).filter(
+            Response.question_type.in_(['dds2_q1_overwhelmed', 'dds2_q2_failing'])
         ).count()
         
+        distressed = db.query(Response).filter(
+            Response.question_type.in_(['dds2_q1_overwhelmed', 'dds2_q2_failing']),
+            cast(Response.response_value, Integer) >= 3
+        ).count()
+        
+        distress_percentage = (distressed / total_dds2 * 100) if total_dds2 > 0 else 0
+        
+        # Response rate (assuming 3 daily check-ins)
+        expected_responses = total_patients * 3 * 7  # Weekly
+        actual_responses_week = db.query(Response).filter(
+            Response.response_timestamp >= datetime.now(timezone.utc) - timedelta(days=7)
+        ).count()
+        response_rate = (actual_responses_week / expected_responses * 100) if expected_responses > 0 else 0
+        
+        # User growth
+        last_month = datetime.now(timezone.utc) - timedelta(days=30)
+        new_users_month = db.query(User).filter(
+            User.registration_date >= last_month
+        ).count()
+        
+        prev_month_start = last_month - timedelta(days=30)
+        prev_month_users = db.query(User).filter(
+            User.registration_date >= prev_month_start,
+            User.registration_date < last_month
+        ).count()
+        
+        growth_rate = ((new_users_month - prev_month_users) / prev_month_users * 100) if prev_month_users > 0 else 0
+        
         return {
-            "total_patients": total_patients,
-            "total_responses": total_responses,
-            "recent_responses": recent_responses,
-            "recent_registrations": recent_registrations,
+            "overview": {
+                "total_users": total_patients,
+                "active_users": active_patients,
+                "total_responses": total_responses,
+                "recent_responses": recent_responses
+            },
+            "metrics": {
+                "average_severity": float(avg_severity),
+                "distress_percentage": float(distress_percentage),
+                "response_rate": float(response_rate),
+                "user_growth_rate": float(growth_rate)
+            },
             "timestamp": datetime.now(timezone.utc).isoformat()
         }
     except Exception as e:
         return {
-            "total_patients": 0,
-            "total_responses": 0,
-            "recent_responses": 0,
-            "recent_registrations": 0,
+            "overview": {
+                "total_users": 0,
+                "active_users": 0,
+                "total_responses": 0,
+                "recent_responses": 0
+            },
+            "metrics": {
+                "average_severity": 3.0,
+                "distress_percentage": 0.0,
+                "response_rate": 0.0,
+                "user_growth_rate": 0.0
+            },
             "error": str(e)
         }
 

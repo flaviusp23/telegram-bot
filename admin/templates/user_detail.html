@@ -216,6 +216,59 @@
         margin-top: 15px;
     }
     
+    /* Messages Section Styles */
+    .messages-section {
+        background: white;
+        padding: 30px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        margin-bottom: 30px;
+    }
+    
+    .messages-section h2 {
+        margin-bottom: 20px;
+        color: #333;
+        font-size: 1.4rem;
+    }
+    
+    #messages-container {
+        max-height: 500px;
+        overflow-y: auto;
+        border: 1px solid #e0e0e0;
+        border-radius: 6px;
+        padding: 10px;
+    }
+    
+    .message-item {
+        margin-bottom: 20px;
+        padding: 15px;
+        background: #f8f9fa;
+        border-radius: 6px;
+        border-left: 4px solid #007bff;
+    }
+    
+    .message-prompt {
+        margin-bottom: 10px;
+        padding: 10px;
+        background: #e3f2fd;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+    
+    .message-response {
+        margin-bottom: 10px;
+        padding: 10px;
+        background: #f1f8e9;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+    
+    .message-timestamp {
+        font-size: 12px;
+        color: #666;
+        text-align: right;
+    }
+    
     /* Mobile patient detail page */
     @media (max-width: 768px) {
         .patient-header {
@@ -491,13 +544,30 @@
 
 {% block extra_js %}
 <script>
+// Get user_id from backend context if available
+const user_id = {{ user_id | default('null') }};
+
 let patientId = null;
 let allResponses = [];
 let patientData = null;
 
 // Get patient ID from URL
+// First try query param for backward compatibility
 const urlParams = new URLSearchParams(window.location.search);
 patientId = urlParams.get('id');
+
+// If not in query params, extract from path /users/{id}
+if (!patientId) {
+    const pathMatch = window.location.pathname.match(/\/users\/(\d+)/);
+    if (pathMatch) {
+        patientId = pathMatch[1];
+    }
+}
+
+// If using path parameter, use the user_id from context
+if (!patientId && typeof user_id !== 'undefined') {
+    patientId = user_id;
+}
 
 if (!patientId) {
     alert(window.erasmusAdmin.translate('errors.generic'));
@@ -626,6 +696,13 @@ function toggleEditForm() {
         form.classList.remove('active');
         btn.textContent = '✏️ Edit Details';
     } else {
+        // Populate form with current values
+        if (patientData) {
+            document.getElementById('edit-first-name').value = patientData.first_name || '';
+            document.getElementById('edit-family-name').value = patientData.family_name || '';
+            document.getElementById('edit-email').value = patientData.email || '';
+            document.getElementById('edit-phone').value = patientData.phone_number || '';
+        }
         form.classList.add('active');
         btn.textContent = '❌ Cancel Edit';
     }

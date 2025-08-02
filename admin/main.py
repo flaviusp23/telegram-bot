@@ -234,6 +234,55 @@ async def user_detail_page(request: Request, user_id: int):
     return templates.TemplateResponse("user_detail.html", context)
 
 
+# Patient route (backward compatibility)
+@app.get("/patient", response_class=HTMLResponse)
+async def patient_page_legacy(request: Request):
+    """Legacy patient route - redirects to new URL."""
+    # Check authentication
+    user = await check_auth_cookie(request)
+    if not user:
+        return RedirectResponse(url="/login?next=/patient", status_code=303)
+    
+    # Get patient ID from query params
+    patient_id = request.query_params.get("id")
+    if patient_id:
+        return RedirectResponse(url=f"/users/{patient_id}", status_code=301)
+    else:
+        return RedirectResponse(url="/users", status_code=301)
+
+
+# Patient report route
+@app.get("/patient-report", response_class=HTMLResponse)
+async def patient_report_page(request: Request):
+    """Render the patient report page."""
+    # Check authentication
+    user = await check_auth_cookie(request)
+    if not user:
+        return RedirectResponse(url="/login?next=/patient-report", status_code=303)
+    
+    context = create_template_context(request)
+    context.update({
+        "page_title": "Patient Report"
+    })
+    return templates.TemplateResponse("patient_report.html", context)
+
+
+# Logs page route
+@app.get("/logs", response_class=HTMLResponse)
+async def logs_page(request: Request):
+    """Render the audit logs page."""
+    # Check authentication
+    user = await check_auth_cookie(request)
+    if not user:
+        return RedirectResponse(url="/login?next=/logs", status_code=303)
+    
+    context = create_template_context(request)
+    context.update({
+        "page_title": "Audit Logs"
+    })
+    return templates.TemplateResponse("logs.html", context)
+
+
 # I18n route
 @app.get("/i18n/{language}.json")
 async def get_i18n_file(language: str):

@@ -399,7 +399,7 @@ async function loadRecentActivity() {
                 if (activity.user_id && activity.type !== 'admin_action') {
                     text = text.replace(
                         /^([^:]+)/,
-                        `<a href="/patient?id=${activity.user_id}" class="activity-patient-link">$1</a>`
+                        `<a href="/users/${activity.user_id}" class="activity-patient-link">$1</a>`
                     );
                 }
                 

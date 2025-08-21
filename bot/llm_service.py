@@ -27,10 +27,16 @@ class GeminiEmotionalSupport:
         self.model = None
         
         if self.api_key:
-            genai.configure(api_key=self.api_key)
-            self._initialize_model()
+            logger.info("Gemini: API key found, initializing service...")
+            try:
+                genai.configure(api_key=self.api_key)
+                self._initialize_model()
+                logger.info("Gemini: Service initialized successfully")
+            except Exception as e:
+                logger.error(f"Gemini: Failed to initialize - {type(e).__name__}: {str(e)}")
+                self.model = None
         else:
-            logger.warning("Google API key not found in environment variables")
+            logger.warning("Gemini: API key not found in environment variables")
     
     def _initialize_model(self):
         """Initialize the Gemini model with safety settings"""
@@ -57,8 +63,18 @@ class GeminiEmotionalSupport:
         
     async def is_available(self) -> bool:
         """Check if Gemini service is available"""
-        if not self.api_key or not self.model:
+        if not self.api_key:
+            logger.warning("Gemini: No API key available")
             return False
+        
+        if not self.model:
+            logger.warning("Gemini: Model not initialized, attempting to reinitialize...")
+            try:
+                genai.configure(api_key=self.api_key)
+                self._initialize_model()
+            except Exception as e:
+                logger.error(f"Gemini: Reinitialize failed - {e}")
+                return False
             
         try:
             # Quick test to check if API is working
@@ -68,7 +84,7 @@ class GeminiEmotionalSupport:
             )
             return bool(response.text)
         except Exception as e:
-            logger.error(f"Error checking Gemini availability: {e}")
+            logger.error(f"Gemini availability check failed: {type(e).__name__}: {str(e)}")
             return False
     
     async def generate_response(
@@ -82,8 +98,18 @@ class GeminiEmotionalSupport:
         logger.info(f"Gemini: Generating response for user '{user_name}' in {language}")
         
         if not self.model:
-            logger.warning("Gemini: Model not initialized")
-            return SupportMessages.SERVICE_UNAVAILABLE
+            logger.warning("Gemini: Model not initialized, attempting to reinitialize...")
+            try:
+                if self.api_key:
+                    genai.configure(api_key=self.api_key)
+                    self._initialize_model()
+                    logger.info("Gemini: Model reinitialized successfully")
+                else:
+                    logger.error("Gemini: No API key available for reinitialization")
+                    return SupportMessages.SERVICE_UNAVAILABLE
+            except Exception as e:
+                logger.error(f"Gemini: Failed to reinitialize model: {e}")
+                return SupportMessages.SERVICE_UNAVAILABLE
             
         try:
             # Build context from conversation history
@@ -97,6 +123,8 @@ class GeminiEmotionalSupport:
                 max_paragraphs=ResponseSettings.MAX_RESPONSE_LENGTH,
                 language=language
             )
+            
+            logger.debug(f"Gemini: Sending request to API...")
             
             # Generate response (run in executor to avoid blocking)
             response = await asyncio.get_event_loop().run_in_executor(
@@ -112,14 +140,21 @@ class GeminiEmotionalSupport:
                     logger.warning("Gemini: Response too short, using fallback")
                     return SupportMessages.UNDERSTANDING_RESPONSE
                 
-                logger.info(f"Gemini: Generated response of {len(generated_text)} chars")
+                logger.info(f"Gemini: Successfully generated response of {len(generated_text)} chars")
                 return generated_text
             else:
-                logger.warning("Gemini: Empty response received")
+                logger.warning("Gemini: Empty response received from API")
                 return SupportMessages.UNDERSTANDING_RESPONSE
                 
         except Exception as e:
-            logger.error(f"Error generating Gemini response: {e}")
+            logger.error(f"Gemini response generation error: {type(e).__name__}: {str(e)}")
+            # Try to provide more specific error info
+            if "quota" in str(e).lower():
+                logger.error("Gemini: API quota exceeded")
+            elif "api" in str(e).lower() and "key" in str(e).lower():
+                logger.error("Gemini: API key issue detected")
+            elif "network" in str(e).lower() or "connection" in str(e).lower():
+                logger.error("Gemini: Network/connection issue")
             return SupportMessages.UNDERSTANDING_RESPONSE
     
     def _build_context(self, conversation_history: List[Dict[str, str]], user_name: str) -> str:

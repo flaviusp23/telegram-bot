@@ -79,6 +79,7 @@ async def health_check(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     """Health check for monitoring"""
     from bot.handlers.language import get_user_language, get_message
     from database import db_session_context, get_user_by_telegram_id
+    from bot.llm_service import get_llm_service
     
     telegram_id = str(update.effective_user.id)
     with db_session_context(commit=False) as db:
@@ -88,11 +89,19 @@ async def health_check(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     scheduler_status = "running" if scheduler.running else "stopped"
     jobs = scheduler.get_jobs()
     
+    # Check Gemini/LLM status
+    llm_service = get_llm_service()
+    gemini_available = await llm_service.is_available()
+    gemini_status = "✅ Available" if gemini_available else "❌ Not Available"
+    
     health_msg = get_message('HEALTH_STATUS_TEMPLATE', lang).format(
         scheduler_status=scheduler_status,
         environment=ENVIRONMENT,
         job_count=len(jobs)
     )
+    
+    # Add Gemini status to health message
+    health_msg += f"\n🤖 Gemini AI: {gemini_status}"
     
     if IS_DEVELOPMENT:
         health_msg += get_message('HEALTH_DEV_MODE', lang).format(minutes=AlertSettings.DEV_ALERT_INTERVAL_MINUTES)

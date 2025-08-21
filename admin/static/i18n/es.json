@@ -237,7 +237,6 @@
     "date": "Fecha",
     "no_patient_id": "No se proporcionó ID del paciente",
     "failed_load_report": "Error al cargar el informe del paciente",
-    "pdf_export_todo": "La exportación en PDF se implementará con una librería como jsPDF",
     "export_failed": "Error al exportar el informe",
     "generated_on": "Generado el"
   },

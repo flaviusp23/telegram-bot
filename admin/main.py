@@ -7,8 +7,7 @@ from pathlib import Path
 import logging
 import time
 
-from fastapi import FastAPI, Request, Depends
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -58,13 +57,6 @@ app = FastAPI(
 app.add_middleware(RequestValidationMiddleware)
 app.add_middleware(RateLimitMiddleware)
 app.add_middleware(I18nMiddleware)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 # Mount static files
 static_path = Path(__file__).parent / "static"
@@ -288,7 +280,6 @@ async def logs_page(request: Request):
 async def get_i18n_file(language: str):
     """Serve i18n JSON files."""
     from fastapi.responses import FileResponse
-    import os
     
     file_path = Path(__file__).parent / "static" / "i18n" / f"{language}.json"
     if file_path.exists():

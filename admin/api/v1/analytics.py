@@ -43,25 +43,40 @@ async def get_dashboard_stats(
             Response.response_timestamp >= yesterday
         ).count()
         
-        # Calculate metrics
-        # Average severity (DDS-2 questions use 1-6 scale)
-        avg_severity = db.query(Response).filter(
+        # Calculate DDS-2 specific metrics
+        # DDS-2 Average Distress Score (1-6 scale: 1=not a problem, 6=very serious problem)
+        avg_dds2_score = db.query(Response).filter(
             Response.question_type.in_(['dds2_q1_overwhelmed', 'dds2_q2_failing'])
         ).with_entities(
             func.avg(cast(Response.response_value, Float))
-        ).scalar() or 3.0
+        ).scalar() or 2.0
         
-        # Distress percentage (responses >= 3 are considered distressed)
-        total_dds2 = db.query(Response).filter(
+        # DDS-2 Distress Level Classification
+        total_dds2_responses = db.query(Response).filter(
             Response.question_type.in_(['dds2_q1_overwhelmed', 'dds2_q2_failing'])
         ).count()
         
-        distressed = db.query(Response).filter(
+        # Moderate distress: DDS-2 score >= 3.0
+        moderate_distress = db.query(Response).filter(
             Response.question_type.in_(['dds2_q1_overwhelmed', 'dds2_q2_failing']),
             cast(Response.response_value, Integer) >= 3
         ).count()
         
-        distress_percentage = (distressed / total_dds2 * 100) if total_dds2 > 0 else 0
+        # High distress: DDS-2 score >= 4.0
+        high_distress = db.query(Response).filter(
+            Response.question_type.in_(['dds2_q1_overwhelmed', 'dds2_q2_failing']),
+            cast(Response.response_value, Integer) >= 4
+        ).count()
+        
+        # Very high distress: DDS-2 score >= 5.0
+        very_high_distress = db.query(Response).filter(
+            Response.question_type.in_(['dds2_q1_overwhelmed', 'dds2_q2_failing']),
+            cast(Response.response_value, Integer) >= 5
+        ).count()
+        
+        moderate_distress_percentage = (moderate_distress / total_dds2_responses * 100) if total_dds2_responses > 0 else 0
+        high_distress_percentage = (high_distress / total_dds2_responses * 100) if total_dds2_responses > 0 else 0
+        very_high_distress_percentage = (very_high_distress / total_dds2_responses * 100) if total_dds2_responses > 0 else 0
         
         # Response rate (assuming 3 daily check-ins)
         expected_responses = total_patients * 3 * 7  # Weekly
@@ -89,13 +104,23 @@ async def get_dashboard_stats(
                 "total_users": total_patients,
                 "active_users": active_patients,
                 "total_responses": total_responses,
-                "recent_responses": recent_responses
+                "recent_responses": recent_responses,
+                "total_dds2_responses": total_dds2_responses
             },
             "metrics": {
-                "average_severity": float(avg_severity),
-                "distress_percentage": float(distress_percentage),
+                "average_dds2_score": float(avg_dds2_score),
+                "moderate_distress_percentage": float(moderate_distress_percentage),
+                "high_distress_percentage": float(high_distress_percentage),
+                "very_high_distress_percentage": float(very_high_distress_percentage),
                 "response_rate": float(response_rate),
                 "user_growth_rate": float(growth_rate)
+            },
+            "dds2_breakdown": {
+                "total_responses": total_dds2_responses,
+                "average_score": float(avg_dds2_score),
+                "moderate_distress_count": moderate_distress,
+                "high_distress_count": high_distress,
+                "very_high_distress_count": very_high_distress
             },
             "timestamp": datetime.now(timezone.utc).isoformat()
         }
@@ -105,13 +130,23 @@ async def get_dashboard_stats(
                 "total_users": 0,
                 "active_users": 0,
                 "total_responses": 0,
-                "recent_responses": 0
+                "recent_responses": 0,
+                "total_dds2_responses": 0
             },
             "metrics": {
-                "average_severity": 3.0,
-                "distress_percentage": 0.0,
+                "average_dds2_score": 2.0,
+                "moderate_distress_percentage": 0.0,
+                "high_distress_percentage": 0.0,
+                "very_high_distress_percentage": 0.0,
                 "response_rate": 0.0,
                 "user_growth_rate": 0.0
+            },
+            "dds2_breakdown": {
+                "total_responses": 0,
+                "average_score": 2.0,
+                "moderate_distress_count": 0,
+                "high_distress_count": 0,
+                "very_high_distress_count": 0
             },
             "error": str(e)
         }
@@ -155,7 +190,7 @@ async def get_recent_activity(
             ).join(AdminUserModel).order_by(
                 AuditLog.timestamp.desc()
             ).limit(limit).all()
-        except Exception as e:
+        except Exception:
             # If admin actions query fails, continue without them
             recent_admin_actions = []
     except Exception as e:

@@ -11,20 +11,36 @@
     
     <div class="dashboard-grid">
         <div class="dashboard-card">
-            <h3 data-i18n="dashboard.total_patients">{{ _('dashboard.total_patients') }}</h3>
-            <p class="metric">-</p>
+            <h3>Total Patients</h3>
+            <p class="metric" id="total-patients">-</p>
         </div>
         <div class="dashboard-card">
-            <h3 data-i18n="dashboard.active_patients">{{ _('dashboard.active_patients') }}</h3>
-            <p class="metric">-</p>
+            <h3>Active Patients</h3>
+            <p class="metric" id="active-patients">-</p>
         </div>
         <div class="dashboard-card">
-            <h3 data-i18n="dashboard.total_responses">{{ _('dashboard.total_responses') }}</h3>
-            <p class="metric">-</p>
+            <h3>DDS-2 Responses</h3>
+            <p class="metric" id="dds2-responses">-</p>
         </div>
         <div class="dashboard-card">
-            <h3 data-i18n="dashboard.distress_rate">{{ _('dashboard.distress_rate') }}</h3>
-            <p class="metric">-</p>
+            <h3>Avg DDS-2 Score</h3>
+            <p class="metric" id="avg-dds2-score">-</p>
+        </div>
+    </div>
+    
+    <!-- DDS-2 Distress Level Cards -->
+    <div class="distress-level-grid">
+        <div class="distress-card moderate">
+            <h4>Moderate Distress (≥3)</h4>
+            <p class="distress-metric" id="moderate-distress">-</p>
+        </div>
+        <div class="distress-card high">
+            <h4>High Distress (≥4)</h4>
+            <p class="distress-metric" id="high-distress">-</p>
+        </div>
+        <div class="distress-card very-high">
+            <h4>Very High Distress (≥5)</h4>
+            <p class="distress-metric" id="very-high-distress">-</p>
         </div>
     </div>
     
@@ -46,16 +62,16 @@
         </section>
         
         <section class="dashboard-section">
-            <h2 data-i18n="dashboard.key_insights">{{ _('dashboard.key_insights') }}</h2>
+            <h2>DDS-2 Analytics & Insights</h2>
             <div id="response-stats">
                 <div class="stats-grid">
                     <div class="stat-item">
                         <div class="stat-main">
-                            <span class="stat-label" data-i18n="dashboard.avg_distress_level">{{ _('dashboard.avg_distress_level') }}</span>
+                            <span class="stat-label">Avg DDS-2 Score</span>
                             <span class="stat-value" id="avg-severity">-</span>
                         </div>
-                        <div class="stat-description" data-i18n="dashboard.distress_description">
-                            {{ _('dashboard.distress_description') }}
+                        <div class="stat-description">
+                            Average Diabetes Distress Scale (DDS-2) score across all patients (1-6 scale)
                         </div>
                     </div>
                     <div class="stat-item">
@@ -137,6 +153,68 @@
     font-weight: bold;
     margin: 10px 0;
     color: #2196F3;
+}
+
+/* DDS-2 Distress Level Cards */
+.distress-level-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin: 30px 0;
+}
+
+.distress-card {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+    text-align: center;
+    border-left: 4px solid;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.distress-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.distress-card.moderate {
+    border-left-color: #ffc107;
+    background: linear-gradient(135deg, #fff9e6 0%, #f8f9fa 100%);
+}
+
+.distress-card.high {
+    border-left-color: #ff9800;
+    background: linear-gradient(135deg, #fff3e0 0%, #f8f9fa 100%);
+}
+
+.distress-card.very-high {
+    border-left-color: #dc3545;
+    background: linear-gradient(135deg, #ffebee 0%, #f8f9fa 100%);
+}
+
+.distress-card h4 {
+    margin: 0 0 15px 0;
+    color: #333;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.distress-metric {
+    font-size: 24px;
+    font-weight: bold;
+    margin: 0;
+}
+
+.distress-card.moderate .distress-metric {
+    color: #e65100;
+}
+
+.distress-card.high .distress-metric {
+    color: #d84315;
+}
+
+.distress-card.very-high .distress-metric {
+    color: #c62828;
 }
 
 #activity-log {
@@ -259,6 +337,25 @@
     .activity-time {
         font-size: 11px;
     }
+    
+    .distress-level-grid {
+        grid-template-columns: 1fr;
+        gap: 15px;
+        margin: 20px 0;
+    }
+    
+    .distress-card {
+        padding: 15px;
+    }
+    
+    .distress-card h4 {
+        font-size: 14px;
+        margin-bottom: 10px;
+    }
+    
+    .distress-metric {
+        font-size: 20px;
+    }
 }
 
 @media (max-width: 480px) {
@@ -310,28 +407,35 @@ async function loadDashboardData(fresh = false) {
         if (data.overview) {
             document.querySelector('.dashboard-card:nth-child(1) .metric').textContent = data.overview.total_users;
             document.querySelector('.dashboard-card:nth-child(2) .metric').textContent = data.overview.active_users;
-            document.querySelector('.dashboard-card:nth-child(3) .metric').textContent = data.overview.total_responses;
-            document.querySelector('.dashboard-card:nth-child(4) .metric').textContent = data.metrics.distress_percentage.toFixed(1) + '%';
+            document.querySelector('.dashboard-card:nth-child(3) .metric').textContent = data.overview.total_dds2_responses;
+            document.querySelector('.dashboard-card:nth-child(4) .metric').textContent = data.metrics.average_dds2_score.toFixed(1);
+        }
+        
+        // Update DDS-2 distress level cards
+        if (data.dds2_breakdown) {
+            document.getElementById('moderate-distress').textContent = data.dds2_breakdown.moderate_distress_count + ' (' + data.metrics.moderate_distress_percentage.toFixed(1) + '%)';
+            document.getElementById('high-distress').textContent = data.dds2_breakdown.high_distress_count + ' (' + data.metrics.high_distress_percentage.toFixed(1) + '%)';
+            document.getElementById('very-high-distress').textContent = data.dds2_breakdown.very_high_distress_count + ' (' + data.metrics.very_high_distress_percentage.toFixed(1) + '%)';
         }
         
         // Update additional statistics with better formatting
         if (data.metrics) {
-            // Average severity with visual indicator
-            const avgSeverity = data.metrics.average_severity;
-            let severityText = avgSeverity.toFixed(1);
-            let severityIndicator = '';
+            // Average DDS-2 score with visual indicator (1-6 scale)
+            const avgDDS2Score = data.metrics.average_dds2_score;
+            let scoreText = avgDDS2Score.toFixed(1);
+            let dds2Indicator = '';
             
-            if (avgSeverity <= 2) {
-                severityIndicator = ' 😊 ' + window.erasmusAdmin.translate('dashboard.severity_levels.low');
+            if (avgDDS2Score <= 2.0) {
+                dds2Indicator = ' 😊 Low Distress';
                 document.getElementById('avg-severity').style.color = '#28a745';
-            } else if (avgSeverity <= 3.5) {
-                severityIndicator = ' 😐 ' + window.erasmusAdmin.translate('dashboard.severity_levels.moderate');
+            } else if (avgDDS2Score <= 4.0) {
+                dds2Indicator = ' 😐 Moderate Distress';
                 document.getElementById('avg-severity').style.color = '#ffc107';
             } else {
-                severityIndicator = ' 😟 ' + window.erasmusAdmin.translate('dashboard.severity_levels.high');
+                dds2Indicator = ' 😟 High Distress';
                 document.getElementById('avg-severity').style.color = '#dc3545';
             }
-            document.getElementById('avg-severity').textContent = severityText + severityIndicator;
+            document.getElementById('avg-severity').textContent = scoreText + dds2Indicator;
             
             // Response rate with engagement level (based on 3 daily check-ins)
             const responseRate = data.metrics.response_rate;

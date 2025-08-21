@@ -237,7 +237,6 @@
     "date": "Date",
     "no_patient_id": "No patient ID provided",
     "failed_load_report": "Failed to load patient report",
-    "pdf_export_todo": "PDF export will be implemented with a PDF library like jsPDF",
     "export_failed": "Failed to export report",
     "generated_on": "Generated on"
   },

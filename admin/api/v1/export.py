@@ -202,7 +202,6 @@ async def export_patient_report(
     
     # Sheet 3: Daily Summary
     daily_summary = {}
-    severity_by_day = {}
     
     for resp in responses:
         date_key = resp.response_timestamp.date()
@@ -212,28 +211,41 @@ async def export_patient_report(
                 'Date': date_key,
                 'Total Responses': 0,
                 'Distress Checks': 0,
-                'Severity Ratings': 0,
-                'Average Severity': []
+                'DDS-2 Q1 (Overwhelmed)': 0,
+                'DDS-2 Q2 (Failing)': 0,
+                'Legacy Severity Ratings': 0,
+                'Average DDS-2 Score': [],
+                'Average Legacy Severity': []
             }
         
         daily_summary[date_key]['Total Responses'] += 1
         
         if resp.question_type == 'distress_check':
             daily_summary[date_key]['Distress Checks'] += 1
+        elif resp.question_type == 'dds2_q1_overwhelmed':
+            daily_summary[date_key]['DDS-2 Q1 (Overwhelmed)'] += 1
+            daily_summary[date_key]['Average DDS-2 Score'].append(int(resp.response_value))
+        elif resp.question_type == 'dds2_q2_failing':
+            daily_summary[date_key]['DDS-2 Q2 (Failing)'] += 1
+            daily_summary[date_key]['Average DDS-2 Score'].append(int(resp.response_value))
         elif resp.question_type == 'severity_rating':
-            daily_summary[date_key]['Severity Ratings'] += 1
-            daily_summary[date_key]['Average Severity'].append(int(resp.response_value))
+            daily_summary[date_key]['Legacy Severity Ratings'] += 1
+            daily_summary[date_key]['Average Legacy Severity'].append(int(resp.response_value))
     
     # Calculate averages
     daily_data = []
     for date_key, data in sorted(daily_summary.items()):
-        avg_severity = sum(data['Average Severity']) / len(data['Average Severity']) if data['Average Severity'] else 0
+        avg_dds2_score = sum(data['Average DDS-2 Score']) / len(data['Average DDS-2 Score']) if data['Average DDS-2 Score'] else 0
+        avg_legacy_severity = sum(data['Average Legacy Severity']) / len(data['Average Legacy Severity']) if data['Average Legacy Severity'] else 0
         daily_data.append({
             'Date': data['Date'],
             'Total Responses': data['Total Responses'],
             'Distress Checks': data['Distress Checks'],
-            'Severity Ratings': data['Severity Ratings'],
-            'Average Severity': round(avg_severity, 2)
+            'DDS-2 Q1 (Overwhelmed)': data['DDS-2 Q1 (Overwhelmed)'],
+            'DDS-2 Q2 (Failing)': data['DDS-2 Q2 (Failing)'],
+            'Legacy Severity Ratings': data['Legacy Severity Ratings'],
+            'Average DDS-2 Score (1-6)': round(avg_dds2_score, 2),
+            'Average Legacy Severity (1-5)': round(avg_legacy_severity, 2)
         })
     
     if daily_data:
@@ -252,41 +264,68 @@ async def export_patient_report(
             weekly_summary[week_key] = {
                 'Week Starting': week_key,
                 'Total Responses': 0,
-                'Average Severity': []
+                'Average DDS-2 Score': [],
+                'Average Legacy Severity': []
             }
         
         weekly_summary[week_key]['Total Responses'] += 1
         
-        if resp.question_type == 'severity_rating':
-            weekly_summary[week_key]['Average Severity'].append(int(resp.response_value))
+        if resp.question_type in ['dds2_q1_overwhelmed', 'dds2_q2_failing']:
+            weekly_summary[week_key]['Average DDS-2 Score'].append(int(resp.response_value))
+        elif resp.question_type == 'severity_rating':
+            weekly_summary[week_key]['Average Legacy Severity'].append(int(resp.response_value))
     
     weekly_data = []
     for week_key, data in sorted(weekly_summary.items()):
-        avg_severity = sum(data['Average Severity']) / len(data['Average Severity']) if data['Average Severity'] else 0
+        avg_dds2_score = sum(data['Average DDS-2 Score']) / len(data['Average DDS-2 Score']) if data['Average DDS-2 Score'] else 0
+        avg_legacy_severity = sum(data['Average Legacy Severity']) / len(data['Average Legacy Severity']) if data['Average Legacy Severity'] else 0
         weekly_data.append({
             'Week Starting': data['Week Starting'],
             'Total Responses': data['Total Responses'],
-            'Average Severity': round(avg_severity, 2)
+            'Average DDS-2 Score (1-6)': round(avg_dds2_score, 2),
+            'Average Legacy Severity (1-5)': round(avg_legacy_severity, 2)
         })
     
     if weekly_data:
         sheets_data['Weekly Summary'] = pd.DataFrame(weekly_data)
     
-    # Sheet 5: Severity Distribution
-    severity_counts = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
+    # Sheet 5: DDS-2 Score Distribution
+    dds2_counts = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0}
+    legacy_severity_counts = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
+    
     for resp in responses:
-        if resp.question_type == 'severity_rating':
+        if resp.question_type in ['dds2_q1_overwhelmed', 'dds2_q2_failing']:
+            level = int(resp.response_value)
+            if 1 <= level <= 6:
+                dds2_counts[level] += 1
+        elif resp.question_type == 'severity_rating':
             level = int(resp.response_value)
             if 1 <= level <= 5:
-                severity_counts[level] += 1
+                legacy_severity_counts[level] += 1
     
-    severity_dist = pd.DataFrame([
-        {'Severity Level': f'Level {k} ({["Low", "Low-Medium", "Medium", "Medium-High", "High"][k-1]})', 
+    # DDS-2 Distribution with clinical descriptions
+    dds2_labels = [
+        "Not a problem", "A slight problem", "A moderate problem", 
+        "Somewhat serious problem", "A serious problem", "A very serious problem"
+    ]
+    
+    dds2_dist = pd.DataFrame([
+        {'DDS-2 Score': f'Level {k} - {dds2_labels[k-1]}', 
          'Count': v, 
-         'Percentage': round(v / sum(severity_counts.values()) * 100, 1) if sum(severity_counts.values()) > 0 else 0}
-        for k, v in severity_counts.items()
+         'Percentage': round(v / sum(dds2_counts.values()) * 100, 1) if sum(dds2_counts.values()) > 0 else 0}
+        for k, v in dds2_counts.items()
     ])
-    sheets_data['Severity Distribution'] = severity_dist
+    sheets_data['DDS-2 Score Distribution'] = dds2_dist
+    
+    # Legacy Severity Distribution (if any legacy data exists)
+    if sum(legacy_severity_counts.values()) > 0:
+        legacy_dist = pd.DataFrame([
+            {'Legacy Severity Level': f'Level {k} ({["Low", "Low-Medium", "Medium", "Medium-High", "High"][k-1]})', 
+             'Count': v, 
+             'Percentage': round(v / sum(legacy_severity_counts.values()) * 100, 1) if sum(legacy_severity_counts.values()) > 0 else 0}
+            for k, v in legacy_severity_counts.items()
+        ])
+        sheets_data['Legacy Severity Distribution'] = legacy_dist
     
     # Generate Excel file
     output = BytesIO()

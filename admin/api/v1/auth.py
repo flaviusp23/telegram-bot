@@ -508,7 +508,7 @@ async def create_first_admin(
         username=request.username,
         email=request.email,
         password_hash=hash_password(request.password),
-        role=AdminRole.super_admin,
+        role="super_admin",
         is_active=True
     )
     

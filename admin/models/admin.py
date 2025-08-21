@@ -2,7 +2,7 @@
 from datetime import datetime, timezone
 import enum
 
-from sqlalchemy import Column, Integer, String, Enum, Boolean, Text, TIMESTAMP, ForeignKey, JSON
+from sqlalchemy import Column, Integer, String, Enum, Boolean, TIMESTAMP, ForeignKey, JSON
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 

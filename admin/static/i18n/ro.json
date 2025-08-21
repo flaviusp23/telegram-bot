@@ -237,7 +237,6 @@
     "date": "Data",
     "no_patient_id": "Nu s-a furnizat ID-ul pacientului",
     "failed_load_report": "Eșec la încărcarea raportului pacientului",
-    "pdf_export_todo": "Exportul PDF va fi implementat cu o bibliotecă precum jsPDF",
     "export_failed": "Eșec la exportarea raportului",
     "generated_on": "Generat pe"
   },

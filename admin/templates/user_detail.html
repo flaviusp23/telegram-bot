@@ -501,6 +501,8 @@
                     <option value="" data-i18n="common.all_types">{{ _('common.all_types') }}</option>
                     <option value="distress_check" data-i18n="responses.filter_options.distress_check">{{ _('responses.filter_options.distress_check') }}</option>
                     <option value="severity_rating" data-i18n="responses.filter_options.severity_rating">{{ _('responses.filter_options.severity_rating') }}</option>
+                    <option value="dds2_q1_overwhelmed">DDS-2 Q1 (Overwhelmed)</option>
+                    <option value="dds2_q2_failing">DDS-2 Q2 (Failing)</option>
                 </select>
             </div>
             
@@ -742,15 +744,25 @@ document.getElementById('edit-patient-form').addEventListener('submit', async fu
 });
 
 function calculateStats() {
+    // Filter for DDS-2 specific responses
+    const dds2Responses = allResponses.filter(r => 
+        r.question_type === 'dds2_q1_overwhelmed' || r.question_type === 'dds2_q2_failing'
+    );
     const distressResponses = allResponses.filter(r => r.question_type === 'distress_check');
-    const severityResponses = allResponses.filter(r => r.question_type === 'severity_rating');
     
+    // Calculate DDS-2 average score (1-6 scale)
+    const avgDDS2Score = dds2Responses.length > 0 ?
+        (dds2Responses.reduce((sum, r) => sum + parseInt(r.response_value), 0) / dds2Responses.length).toFixed(1) : 0;
+    
+    // Calculate distress frequency from yes/no questions
     const distressYes = distressResponses.filter(r => r.response_value === 'yes').length;
     const distressRate = distressResponses.length > 0 ? 
         ((distressYes / distressResponses.length) * 100).toFixed(1) : 0;
     
-    const avgSeverity = severityResponses.length > 0 ?
-        (severityResponses.reduce((sum, r) => sum + parseInt(r.response_value), 0) / severityResponses.length).toFixed(1) : 0;
+    // Count high distress responses (DDS-2 score >= 4)
+    const highDistressCount = dds2Responses.filter(r => parseInt(r.response_value) >= 4).length;
+    const highDistressRate = dds2Responses.length > 0 ? 
+        ((highDistressCount / dds2Responses.length) * 100).toFixed(1) : 0;
     
     // Get responses from last 7 days
     const weekAgo = new Date();
@@ -760,19 +772,19 @@ function calculateStats() {
     document.getElementById('stats-cards').innerHTML = `
         <div class="stat-card">
             <div class="stat-value">${allResponses.length}</div>
-            <div class="stat-label" data-i18n="dashboard.total_responses">${window.erasmusAdmin.translate('dashboard.total_responses')}</div>
+            <div class="stat-label">Total Responses</div>
         </div>
         <div class="stat-card">
-            <div class="stat-value">${distressRate}%</div>
-            <div class="stat-label" data-i18n="dashboard.distress_rate">${window.erasmusAdmin.translate('dashboard.distress_rate')}</div>
+            <div class="stat-value">${avgDDS2Score}/6</div>
+            <div class="stat-label">Avg DDS-2 Score</div>
         </div>
         <div class="stat-card">
-            <div class="stat-value">${avgSeverity}/5</div>
-            <div class="stat-label" data-i18n="analytics.average_severity">${window.erasmusAdmin.translate('analytics.average_severity')}</div>
+            <div class="stat-value">${highDistressRate}%</div>
+            <div class="stat-label">High Distress Rate (≥4)</div>
         </div>
         <div class="stat-card">
             <div class="stat-value">${recentResponses.length}</div>
-            <div class="stat-label" data-i18n="dashboard.responses_7d">${window.erasmusAdmin.translate('dashboard.responses_7d')}</div>
+            <div class="stat-label">Responses (7 days)</div>
         </div>
     `;
 }
@@ -790,6 +802,9 @@ function displayResponses(responses) {
                 responseDisplay = `<span class="response-value response-${response.response_value}">${translatedValue}</span>`;
             } else if (response.question_type === 'severity_rating') {
                 responseDisplay = `<span class="severity-badge severity-${response.response_value}">${response.response_value}/5</span>`;
+            } else if (response.question_type === 'dds2_q1_overwhelmed' || response.question_type === 'dds2_q2_failing') {
+                // DDS-2 responses use 1-6 scale
+                responseDisplay = `<span class="severity-badge severity-${response.response_value}">${response.response_value}/6</span>`;
             } else {
                 responseDisplay = response.response_value;
             }

@@ -3,10 +3,12 @@
 This implementation uses Google's Gemini API (free tier) which provides
 60 requests per minute and is perfect for deployment on Railway.
 """
-from typing import Dict, List
+from typing import Dict, List, Optional
 import asyncio
 import logging
 import os
+import time
+from datetime import datetime, timedelta
 import google.generativeai as genai
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
 
@@ -25,18 +27,38 @@ class GeminiEmotionalSupport:
         self.api_key = os.getenv('GOOGLE_API_KEY')
         self.model_name = "gemini-1.5-flash"  # Free tier model
         self.model = None
+        self.last_initialized = None
+        self.initialization_timeout = timedelta(hours=1)  # Reinitialize every hour
+        self.request_timeout = 30  # 30 seconds timeout for API calls
         
         if self.api_key:
             logger.info("Gemini: API key found, initializing service...")
-            try:
-                genai.configure(api_key=self.api_key)
-                self._initialize_model()
-                logger.info("Gemini: Service initialized successfully")
-            except Exception as e:
-                logger.error(f"Gemini: Failed to initialize - {type(e).__name__}: {str(e)}")
-                self.model = None
+            self._configure_and_initialize()
         else:
             logger.warning("Gemini: API key not found in environment variables")
+    
+    def _configure_and_initialize(self):
+        """Configure API and initialize model"""
+        try:
+            genai.configure(api_key=self.api_key)
+            self._initialize_model()
+            self.last_initialized = datetime.now()
+            logger.info("Gemini: Service initialized successfully")
+        except Exception as e:
+            logger.error(f"Gemini: Failed to initialize - {type(e).__name__}: {str(e)}")
+            self.model = None
+            self.last_initialized = None
+    
+    def _should_reinitialize(self) -> bool:
+        """Check if we should reinitialize the connection"""
+        if not self.model:
+            return True
+        if not self.last_initialized:
+            return True
+        if datetime.now() - self.last_initialized > self.initialization_timeout:
+            logger.info("Gemini: Connection is stale, will reinitialize")
+            return True
+        return False
     
     def _initialize_model(self):
         """Initialize the Gemini model with safety settings"""
@@ -67,24 +89,31 @@ class GeminiEmotionalSupport:
             logger.warning("Gemini: No API key available")
             return False
         
+        # Check if we need to reinitialize
+        if self._should_reinitialize():
+            logger.info("Gemini: Reinitializing connection...")
+            self._configure_and_initialize()
+            
         if not self.model:
-            logger.warning("Gemini: Model not initialized, attempting to reinitialize...")
-            try:
-                genai.configure(api_key=self.api_key)
-                self._initialize_model()
-            except Exception as e:
-                logger.error(f"Gemini: Reinitialize failed - {e}")
-                return False
+            return False
             
         try:
-            # Quick test to check if API is working
-            response = await asyncio.get_event_loop().run_in_executor(
-                None,
-                lambda: self.model.generate_content("Hello, respond with 'OK'")
+            # Quick test with timeout to check if API is working
+            response = await asyncio.wait_for(
+                asyncio.get_event_loop().run_in_executor(
+                    None,
+                    lambda: self.model.generate_content("Hello, respond with 'OK'")
+                ),
+                timeout=10  # 10 second timeout for availability check
             )
             return bool(response.text)
+        except asyncio.TimeoutError:
+            logger.error("Gemini: Availability check timed out")
+            self.model = None  # Force reinitialization next time
+            return False
         except Exception as e:
             logger.error(f"Gemini availability check failed: {type(e).__name__}: {str(e)}")
+            self.model = None  # Force reinitialization next time
             return False
     
     async def generate_response(
@@ -97,19 +126,14 @@ class GeminiEmotionalSupport:
         """Generate a supportive response using Gemini"""
         logger.info(f"Gemini: Generating response for user '{user_name}' in {language}")
         
+        # Check if we need to reinitialize before generating response
+        if self._should_reinitialize():
+            logger.info("Gemini: Reinitializing before generating response...")
+            self._configure_and_initialize()
+        
         if not self.model:
-            logger.warning("Gemini: Model not initialized, attempting to reinitialize...")
-            try:
-                if self.api_key:
-                    genai.configure(api_key=self.api_key)
-                    self._initialize_model()
-                    logger.info("Gemini: Model reinitialized successfully")
-                else:
-                    logger.error("Gemini: No API key available for reinitialization")
-                    return SupportMessages.SERVICE_UNAVAILABLE
-            except Exception as e:
-                logger.error(f"Gemini: Failed to reinitialize model: {e}")
-                return SupportMessages.SERVICE_UNAVAILABLE
+            logger.error("Gemini: Model not available after reinitialization attempt")
+            return SupportMessages.SERVICE_UNAVAILABLE
             
         try:
             # Build context from conversation history
@@ -124,13 +148,23 @@ class GeminiEmotionalSupport:
                 language=language
             )
             
-            logger.debug(f"Gemini: Sending request to API...")
+            logger.debug(f"Gemini: Sending request to API with {self.request_timeout}s timeout...")
             
-            # Generate response (run in executor to avoid blocking)
-            response = await asyncio.get_event_loop().run_in_executor(
-                None,
-                lambda: self.model.generate_content(prompt)
-            )
+            # Generate response with timeout
+            try:
+                response = await asyncio.wait_for(
+                    asyncio.get_event_loop().run_in_executor(
+                        None,
+                        lambda: self.model.generate_content(prompt)
+                    ),
+                    timeout=self.request_timeout
+                )
+            except asyncio.TimeoutError:
+                logger.error(f"Gemini: Request timed out after {self.request_timeout} seconds")
+                # Force reinitialization for next request
+                self.model = None
+                self.last_initialized = None
+                return SupportMessages.SERVICE_UNAVAILABLE
             
             if response and response.text:
                 generated_text = response.text.strip()
@@ -148,13 +182,22 @@ class GeminiEmotionalSupport:
                 
         except Exception as e:
             logger.error(f"Gemini response generation error: {type(e).__name__}: {str(e)}")
+            
+            # Reset model on certain errors
+            error_str = str(e).lower()
+            if any(keyword in error_str for keyword in ['quota', 'invalid', 'unauthorized', 'forbidden']):
+                logger.error("Gemini: Critical error detected, resetting model")
+                self.model = None
+                self.last_initialized = None
+            
             # Try to provide more specific error info
-            if "quota" in str(e).lower():
+            if "quota" in error_str:
                 logger.error("Gemini: API quota exceeded")
-            elif "api" in str(e).lower() and "key" in str(e).lower():
+            elif "api" in error_str and "key" in error_str:
                 logger.error("Gemini: API key issue detected")
-            elif "network" in str(e).lower() or "connection" in str(e).lower():
+            elif "network" in error_str or "connection" in error_str:
                 logger.error("Gemini: Network/connection issue")
+                
             return SupportMessages.UNDERSTANDING_RESPONSE
     
     def _build_context(self, conversation_history: List[Dict[str, str]], user_name: str) -> str:
@@ -175,12 +218,25 @@ class GeminiEmotionalSupport:
 
 # Create a single instance to reuse
 _gemini_instance = None
+_instance_created_at = None
+_instance_lifetime = timedelta(hours=6)  # Create new instance every 6 hours
 
 def get_llm_service():
-    """Get or create the LLM service instance"""
-    global _gemini_instance
-    if _gemini_instance is None:
+    """Get or create the LLM service instance with automatic refresh"""
+    global _gemini_instance, _instance_created_at
+    
+    # Check if we need a new instance
+    should_create_new = (
+        _gemini_instance is None or
+        _instance_created_at is None or
+        datetime.now() - _instance_created_at > _instance_lifetime
+    )
+    
+    if should_create_new:
+        logger.info("Creating new Gemini service instance")
         _gemini_instance = GeminiEmotionalSupport()
+        _instance_created_at = datetime.now()
+    
     return _gemini_instance
 
 

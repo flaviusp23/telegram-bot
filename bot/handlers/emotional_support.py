@@ -175,7 +175,7 @@ async def handle_support_message(update: Update, context: ContextTypes.DEFAULT_T
 
 
 async def end_support(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """End the support conversation"""
+    """End the support conversation with /done"""
     support_context = context.user_data.get('support_context', {})
     exchanges = len(support_context.get('conversation_history', [])) // 2
     
@@ -183,7 +183,7 @@ async def end_support(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
     await update.message.reply_text(SupportMessages.CONVERSATION_END_MESSAGE)
     
     # Log conversation stats
-    logger.info(f"Support conversation ended. User had {exchanges} exchanges.")
+    logger.info(f"Support conversation ended with /done. User had {exchanges} exchanges.")
     
     # Clear conversation data
     context.user_data.pop('support_context', None)
@@ -198,6 +198,23 @@ async def cancel_support(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         get_message('CONVERSATION_CANCELLED', lang)
     )
     context.user_data.pop('support_context', None)
+    return ConversationHandler.END
+
+
+async def end_support_for_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """End support conversation when user types another command"""
+    # Clear conversation data
+    context.user_data.pop('support_context', None)
+    
+    # Brief message to acknowledge the end
+    await update.message.reply_text(
+        "Support chat ended. Processing your command... 💙"
+    )
+    
+    # Log that conversation was interrupted by another command
+    logger.info(f"Support conversation ended by command: {update.message.text}")
+    
+    # Return END to exit conversation, command will be processed by its handler
     return ConversationHandler.END
 
 

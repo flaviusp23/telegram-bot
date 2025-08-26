@@ -34,8 +34,8 @@ from bot.handlers import (
 from bot.handlers.auth import initial_language_callback
 from bot.handlers.language import language_command, language_callback
 from bot.handlers.emotional_support import (
-    start_support, handle_support_message, cancel_support, CHATTING,
-    support_callback
+    start_support, handle_support_message, cancel_support, end_support, 
+    end_support_for_command, CHATTING, support_callback
 )
 from bot.scheduler import send_scheduled_alerts
 from bot_config.bot_constants import (
@@ -293,27 +293,36 @@ def main() -> None:
     application.add_handler(CommandHandler("export", export_data))
     application.add_handler(CommandHandler("health", health_check))
     application.add_handler(CommandHandler("send_now", send_alerts_now))
-    application.add_handler(CommandHandler("done", done_command))
     
     # Register callback query handlers
     application.add_handler(CallbackQueryHandler(button_callback_dds2, pattern="^dds2_"))
     application.add_handler(CallbackQueryHandler(language_callback, pattern="^set_language_"))
     application.add_handler(CallbackQueryHandler(initial_language_callback, pattern="^initial_language_"))
     
-    # Add emotional support conversation handler
+    # Add emotional support conversation handler (must be before global done handler)
     support_handler = ConversationHandler(
         entry_points=[
             CommandHandler("support", start_support),
             CallbackQueryHandler(support_callback, pattern="^(start_support|decline_support)$")
         ],
         states={
-            CHATTING: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_support_message)]
+            CHATTING: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, handle_support_message),
+                CommandHandler("done", end_support)  # Handle /done within conversation
+            ]
         },
-        fallbacks=[CommandHandler("cancel", cancel_support)],
+        fallbacks=[
+            CommandHandler("cancel", cancel_support),
+            CommandHandler("done", end_support),  # Handle /done as fallback
+            MessageHandler(filters.COMMAND, end_support_for_command)  # ANY other command ends the conversation
+        ],
         per_chat=True,
         per_user=True
     )
     application.add_handler(support_handler)
+    
+    # Add global done handler (after conversation handler so it doesn't interfere)
+    application.add_handler(CommandHandler("done", done_command))
     
     # Register error handler
     application.add_error_handler(error_handler)

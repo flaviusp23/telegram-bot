@@ -6,7 +6,7 @@ import asyncio
 import logging
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import ContextTypes, ConversationHandler
+from telegram.ext import ContextTypes, ConversationHandler, ApplicationHandlerStop
 
 from bot.decorators import (
     require_registered_user,
@@ -227,7 +227,8 @@ async def command_during_support(update: Update, context: ContextTypes.DEFAULT_T
         parse_mode='Markdown'
     )
     
-    return CHATTING  # Stay in conversation until user confirms
+    # Stop other handlers from processing this update
+    raise ApplicationHandlerStop(CHATTING)
 
 
 # Quick support after DDS-2 high score

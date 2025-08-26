@@ -314,27 +314,27 @@ def main() -> None:
         name="support_conversation",
         persistent=False
     )
-    # Add support handler FIRST so it has priority over global handlers
-    application.add_handler(support_handler, group=0)
+    # Add support handler FIRST - it will process commands when in conversation
+    application.add_handler(support_handler)
     
-    # Register other command handlers (in group 1 so they have lower priority)
-    application.add_handler(CommandHandler("start", start), group=1)
-    application.add_handler(CommandHandler("register", register), group=1)
-    application.add_handler(CommandHandler("help", help_command), group=1)
-    application.add_handler(CommandHandler("status", status), group=1)
-    application.add_handler(CommandHandler("language", language_command), group=1)
-    application.add_handler(CommandHandler("pause", pause_alerts), group=1)
-    application.add_handler(CommandHandler("resume", resume_alerts), group=1)
-    application.add_handler(CommandHandler("questionnaire", questionnaire_dds2), group=1)
-    application.add_handler(CommandHandler("export", export_data), group=1)
-    application.add_handler(CommandHandler("health", health_check), group=1)
-    application.add_handler(CommandHandler("send_now", send_alerts_now), group=1)
-    application.add_handler(CommandHandler("done", done_command), group=1)
+    # Register other command handlers AFTER the conversation handler
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("register", register))
+    application.add_handler(CommandHandler("help", help_command))
+    application.add_handler(CommandHandler("status", status))
+    application.add_handler(CommandHandler("language", language_command))
+    application.add_handler(CommandHandler("pause", pause_alerts))
+    application.add_handler(CommandHandler("resume", resume_alerts))
+    application.add_handler(CommandHandler("questionnaire", questionnaire_dds2))
+    application.add_handler(CommandHandler("export", export_data))
+    application.add_handler(CommandHandler("health", health_check))
+    application.add_handler(CommandHandler("send_now", send_alerts_now))
+    application.add_handler(CommandHandler("done", done_command))
     
     # Register callback query handlers
-    application.add_handler(CallbackQueryHandler(button_callback_dds2, pattern="^dds2_"), group=1)
-    application.add_handler(CallbackQueryHandler(language_callback, pattern="^set_language_"), group=1)
-    application.add_handler(CallbackQueryHandler(initial_language_callback, pattern="^initial_language_"), group=1)
+    application.add_handler(CallbackQueryHandler(button_callback_dds2, pattern="^dds2_"))
+    application.add_handler(CallbackQueryHandler(language_callback, pattern="^set_language_"))
+    application.add_handler(CallbackQueryHandler(initial_language_callback, pattern="^initial_language_"))
     
     # Register error handler
     application.add_error_handler(error_handler)

@@ -2,6 +2,7 @@
 
 Provides AI-powered emotional support for users with diabetes distress.
 """
+import asyncio
 import logging
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -201,21 +202,30 @@ async def cancel_support(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     return ConversationHandler.END
 
 
-async def end_support_for_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    """End support conversation when user types another command"""
-    # Clear conversation data
-    context.user_data.pop('support_context', None)
+async def command_during_support(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Handle when user types a command during support conversation"""
+    command = update.message.text if update.message else "/unknown"
     
-    # Brief message to acknowledge the end
+    # Store the command for later use
+    context.user_data['pending_command'] = command
+    
+    # Ask user if they want to end the conversation
+    keyboard = [
+        [
+            InlineKeyboardButton("✅ Yes, end chat", callback_data="confirm_end_support"),
+            InlineKeyboardButton("❌ No, continue", callback_data="continue_support")
+        ]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
     await update.message.reply_text(
-        "Support chat ended. Processing your command... 💙"
+        f"You typed `{command}` during our support chat.\n\n"
+        "Do you want to end the support conversation and run this command?",
+        reply_markup=reply_markup,
+        parse_mode='Markdown'
     )
     
-    # Log that conversation was interrupted by another command
-    logger.info(f"Support conversation ended by command: {update.message.text}")
-    
-    # Return END to exit conversation, command will be processed by its handler
-    return ConversationHandler.END
+    return CHATTING  # Stay in conversation until user confirms
 
 
 # Quick support after DDS-2 high score
@@ -251,6 +261,44 @@ async def offer_support_after_dds2(update: Update, context: ContextTypes.DEFAULT
         get_message(message_key, lang),
         reply_markup=reply_markup
     )
+
+
+async def command_confirmation_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    """Handle confirmation for ending support to run a command"""
+    query = update.callback_query
+    await query.answer()
+    
+    if query.data == "confirm_end_support":
+        # User wants to end the conversation
+        pending_command = context.user_data.get('pending_command', '')
+        support_context = context.user_data.get('support_context', {})
+        exchanges = len(support_context.get('conversation_history', [])) // 2
+        
+        # Clear conversation data
+        context.user_data.pop('support_context', None)
+        context.user_data.pop('pending_command', None)
+        
+        # Edit the confirmation message
+        await query.edit_message_text(
+            f"✅ Support chat ended after {exchanges} exchanges.\n\n"
+            f"Thank you for sharing with me today. 💙\n\n"
+            f"Please type {pending_command} again to run it."
+        )
+        
+        logger.info(f"Support ended by user confirmation to run command: {pending_command}")
+        return ConversationHandler.END
+        
+    elif query.data == "continue_support":
+        # User wants to continue the conversation
+        context.user_data.pop('pending_command', None)
+        
+        await query.edit_message_text(
+            "Let's continue our conversation. 💬\n"
+            "What would you like to talk about?"
+        )
+        return CHATTING
+    
+    return CHATTING
 
 
 async def support_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:

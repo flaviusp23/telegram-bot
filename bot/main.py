@@ -35,7 +35,7 @@ from bot.handlers.auth import initial_language_callback
 from bot.handlers.language import language_command, language_callback
 from bot.handlers.emotional_support import (
     start_support, handle_support_message, cancel_support, end_support, 
-    end_support_for_command, CHATTING, support_callback
+    command_during_support, command_confirmation_callback, CHATTING, support_callback
 )
 from bot.scheduler import send_scheduled_alerts
 from bot_config.bot_constants import (
@@ -307,14 +307,16 @@ def main() -> None:
         ],
         states={
             CHATTING: [
+                CommandHandler("done", end_support),  # Handle /done to end conversation
+                CallbackQueryHandler(command_confirmation_callback, pattern="^(confirm_end_support|continue_support)$"),
                 MessageHandler(filters.TEXT & ~filters.COMMAND, handle_support_message),
-                CommandHandler("done", end_support)  # Handle /done within conversation
+                MessageHandler(filters.COMMAND, command_during_support)  # Handle other commands
             ]
         },
         fallbacks=[
             CommandHandler("cancel", cancel_support),
-            CommandHandler("done", end_support),  # Handle /done as fallback
-            MessageHandler(filters.COMMAND, end_support_for_command)  # ANY other command ends the conversation
+            CommandHandler("done", end_support)  # Handle /done as fallback
+            # Removed auto-exit on other commands - too complex to handle properly
         ],
         per_chat=True,
         per_user=True

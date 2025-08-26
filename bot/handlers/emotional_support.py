@@ -98,12 +98,28 @@ async def handle_support_message(update: Update, context: ContextTypes.DEFAULT_T
         lang_code = context.user_data.get('language', 'en')
         language_name = Languages.NAMES.get(lang_code, 'English')
         
+        logger.info(f"Requesting AI response for user {telegram_id}")
+        
         ai_response = await llm_service.generate_response(
             user_message,
             support_context.get('conversation_history', []),
             user_name,
             language_name
         )
+        
+        # Check if we got a valid response or a fallback
+        if ai_response in [SupportMessages.SERVICE_UNAVAILABLE, SupportMessages.UNDERSTANDING_RESPONSE]:
+            logger.warning(f"Gemini returned fallback response: {ai_response[:50]}...")
+            # Still send the fallback message to user instead of hanging
+            await update.message.reply_text(ai_response)
+            
+            # Optionally suggest trying again
+            await update.message.reply_text(
+                "💡 *Tip:* The AI service might be temporarily busy. "
+                "You can try sending your message again, or type /done to end the chat.",
+                parse_mode='Markdown'
+            )
+            return CHATTING
         
         # Save to conversation history
         support_context['conversation_history'].append({
@@ -136,10 +152,26 @@ async def handle_support_message(update: Update, context: ContextTypes.DEFAULT_T
         
         return CHATTING
         
+    except asyncio.TimeoutError:
+        logger.error(f"Timeout in support conversation for user {telegram_id}")
+        await update.message.reply_text(
+            "⏱️ The response is taking longer than expected. "
+            "Please try again or type /done to end the chat."
+        )
+        return CHATTING
+        
     except Exception as e:
-        logger.error(f"Error in support conversation: {e}")
-        await update.message.reply_text(SupportMessages.TECHNICAL_ERROR)
-        return ConversationHandler.END
+        logger.error(f"Error in support conversation: {type(e).__name__}: {str(e)}")
+        # Send a helpful message instead of generic error
+        await update.message.reply_text(
+            "I'm having trouble connecting to the AI service right now. "
+            "Here's what you can do:\n\n"
+            "• Try sending your message again\n"
+            "• Type /done to end this chat\n"
+            "• Come back later when the service is restored\n\n"
+            "Remember, you're doing great managing your diabetes! 💪"
+        )
+        return CHATTING
 
 
 async def end_support(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:

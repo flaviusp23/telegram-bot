@@ -28,35 +28,47 @@ class GeminiEmotionalSupport:
         self.model_name = "gemini-1.5-flash"  # Free tier model
         self.model = None
         self.last_initialized = None
-        self.initialization_timeout = timedelta(hours=1)  # Reinitialize every hour
-        self.request_timeout = 30  # 30 seconds timeout for API calls
+        self.initialization_timeout = timedelta(minutes=30)  # Reinitialize every 30 minutes
+        self.request_timeout = 25  # 25 seconds timeout for API calls
+        self.failed_attempts = 0
+        self.max_failed_attempts = 3
         
         if self.api_key:
-            logger.info("Gemini: API key found, initializing service...")
+            logger.info(f"Gemini: API key found ({len(self.api_key)} chars), initializing service...")
             self._configure_and_initialize()
         else:
-            logger.warning("Gemini: API key not found in environment variables")
+            logger.error("Gemini: GOOGLE_API_KEY not found in environment variables!")
     
     def _configure_and_initialize(self):
         """Configure API and initialize model"""
         try:
+            logger.info("Gemini: Configuring API...")
             genai.configure(api_key=self.api_key)
+            logger.info("Gemini: Creating model instance...")
             self._initialize_model()
             self.last_initialized = datetime.now()
-            logger.info("Gemini: Service initialized successfully")
+            self.failed_attempts = 0  # Reset failed attempts on successful init
+            logger.info(f"Gemini: Service initialized successfully at {self.last_initialized}")
         except Exception as e:
             logger.error(f"Gemini: Failed to initialize - {type(e).__name__}: {str(e)}")
             self.model = None
             self.last_initialized = None
+            self.failed_attempts += 1
     
     def _should_reinitialize(self) -> bool:
         """Check if we should reinitialize the connection"""
         if not self.model:
+            logger.info("Gemini: Model is None, need to reinitialize")
             return True
         if not self.last_initialized:
+            logger.info("Gemini: No initialization timestamp, need to reinitialize")
             return True
-        if datetime.now() - self.last_initialized > self.initialization_timeout:
-            logger.info("Gemini: Connection is stale, will reinitialize")
+        time_since_init = datetime.now() - self.last_initialized
+        if time_since_init > self.initialization_timeout:
+            logger.info(f"Gemini: Connection is {time_since_init.total_seconds()/60:.1f} minutes old (> {self.initialization_timeout.total_seconds()/60:.0f} min), will reinitialize")
+            return True
+        if self.failed_attempts >= self.max_failed_attempts:
+            logger.warning(f"Gemini: Too many failed attempts ({self.failed_attempts}), forcing reinitialize")
             return True
         return False
     
@@ -161,6 +173,7 @@ class GeminiEmotionalSupport:
                 )
             except asyncio.TimeoutError:
                 logger.error(f"Gemini: Request timed out after {self.request_timeout} seconds")
+                self.failed_attempts += 1
                 # Force reinitialization for next request
                 self.model = None
                 self.last_initialized = None
@@ -182,23 +195,26 @@ class GeminiEmotionalSupport:
                 
         except Exception as e:
             logger.error(f"Gemini response generation error: {type(e).__name__}: {str(e)}")
+            self.failed_attempts += 1
             
             # Reset model on certain errors
             error_str = str(e).lower()
-            if any(keyword in error_str for keyword in ['quota', 'invalid', 'unauthorized', 'forbidden']):
-                logger.error("Gemini: Critical error detected, resetting model")
+            if any(keyword in error_str for keyword in ['quota', 'invalid', 'unauthorized', 'forbidden', 'resource', 'exhausted']):
+                logger.error(f"Gemini: Critical error detected ({type(e).__name__}), resetting model")
                 self.model = None
                 self.last_initialized = None
             
             # Try to provide more specific error info
-            if "quota" in error_str:
-                logger.error("Gemini: API quota exceeded")
+            if "quota" in error_str or "resource" in error_str:
+                logger.error("Gemini: API quota or resource limit exceeded")
             elif "api" in error_str and "key" in error_str:
                 logger.error("Gemini: API key issue detected")
             elif "network" in error_str or "connection" in error_str:
                 logger.error("Gemini: Network/connection issue")
+            elif "timeout" in error_str:
+                logger.error("Gemini: Operation timed out")
                 
-            return SupportMessages.UNDERSTANDING_RESPONSE
+            return SupportMessages.SERVICE_UNAVAILABLE
     
     def _build_context(self, conversation_history: List[Dict[str, str]], user_name: str) -> str:
         """Build conversation context for the prompt"""
@@ -219,23 +235,35 @@ class GeminiEmotionalSupport:
 # Create a single instance to reuse
 _gemini_instance = None
 _instance_created_at = None
-_instance_lifetime = timedelta(hours=6)  # Create new instance every 6 hours
+_instance_lifetime = timedelta(hours=2)  # Create new instance every 2 hours
 
 def get_llm_service():
     """Get or create the LLM service instance with automatic refresh"""
     global _gemini_instance, _instance_created_at
     
+    current_time = datetime.now()
+    
     # Check if we need a new instance
-    should_create_new = (
-        _gemini_instance is None or
-        _instance_created_at is None or
-        datetime.now() - _instance_created_at > _instance_lifetime
-    )
+    should_create_new = False
+    
+    if _gemini_instance is None:
+        logger.info("Gemini: No instance exists, creating new one")
+        should_create_new = True
+    elif _instance_created_at is None:
+        logger.info("Gemini: No creation timestamp, creating new instance")
+        should_create_new = True
+    elif current_time - _instance_created_at > _instance_lifetime:
+        age = (current_time - _instance_created_at).total_seconds() / 3600
+        logger.info(f"Gemini: Instance is {age:.1f} hours old, creating new one")
+        should_create_new = True
+    elif hasattr(_gemini_instance, 'failed_attempts') and _gemini_instance.failed_attempts >= 5:
+        logger.warning(f"Gemini: Instance has {_gemini_instance.failed_attempts} failed attempts, creating new one")
+        should_create_new = True
     
     if should_create_new:
-        logger.info("Creating new Gemini service instance")
+        logger.info(f"Creating new Gemini service instance at {current_time}")
         _gemini_instance = GeminiEmotionalSupport()
-        _instance_created_at = datetime.now()
+        _instance_created_at = current_time
     
     return _gemini_instance
 

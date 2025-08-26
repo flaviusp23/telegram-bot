@@ -206,6 +206,8 @@ async def command_during_support(update: Update, context: ContextTypes.DEFAULT_T
     """Handle when user types a command during support conversation"""
     command = update.message.text if update.message else "/unknown"
     
+    logger.info(f"Command intercepted during support: {command}")
+    
     # Store the command for later use
     context.user_data['pending_command'] = command
     

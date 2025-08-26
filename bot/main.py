@@ -280,26 +280,7 @@ def main() -> None:
         .build()
     )
     
-    # Register command handlers
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("register", register))
-    application.add_handler(CommandHandler("help", help_command))
-    application.add_handler(CommandHandler("status", status))
-    application.add_handler(CommandHandler("language", language_command))
-    application.add_handler(CommandHandler("pause", pause_alerts))
-    application.add_handler(CommandHandler("resume", resume_alerts))
-    # Use DDS-2 questionnaire as the default
-    application.add_handler(CommandHandler("questionnaire", questionnaire_dds2))
-    application.add_handler(CommandHandler("export", export_data))
-    application.add_handler(CommandHandler("health", health_check))
-    application.add_handler(CommandHandler("send_now", send_alerts_now))
-    
-    # Register callback query handlers
-    application.add_handler(CallbackQueryHandler(button_callback_dds2, pattern="^dds2_"))
-    application.add_handler(CallbackQueryHandler(language_callback, pattern="^set_language_"))
-    application.add_handler(CallbackQueryHandler(initial_language_callback, pattern="^initial_language_"))
-    
-    # Add emotional support conversation handler (must be before global done handler)
+    # IMPORTANT: Add emotional support conversation handler FIRST for priority
     support_handler = ConversationHandler(
         entry_points=[
             CommandHandler("support", start_support),
@@ -307,24 +288,42 @@ def main() -> None:
         ],
         states={
             CHATTING: [
-                CommandHandler("done", end_support),  # Handle /done to end conversation
                 CallbackQueryHandler(command_confirmation_callback, pattern="^(confirm_end_support|continue_support)$"),
-                MessageHandler(filters.TEXT & ~filters.COMMAND, handle_support_message),
-                MessageHandler(filters.COMMAND, command_during_support)  # Handle other commands
+                CommandHandler("done", end_support),  # Handle /done to end conversation
+                CommandHandler("cancel", cancel_support),  # Handle /cancel
+                MessageHandler(filters.COMMAND, command_during_support),  # Catch ALL other commands first
+                MessageHandler(filters.TEXT & ~filters.COMMAND, handle_support_message)  # Then handle text
             ]
         },
         fallbacks=[
-            CommandHandler("cancel", cancel_support),
-            CommandHandler("done", end_support)  # Handle /done as fallback
-            # Removed auto-exit on other commands - too complex to handle properly
+            # Fallbacks are only triggered when no state handler matches
         ],
         per_chat=True,
-        per_user=True
+        per_user=True,
+        name="support_conversation",
+        persistent=False
     )
-    application.add_handler(support_handler)
+    # Add support handler FIRST so it has priority over global handlers
+    application.add_handler(support_handler, group=0)
     
-    # Add global done handler (after conversation handler so it doesn't interfere)
-    application.add_handler(CommandHandler("done", done_command))
+    # Register other command handlers (in group 1 so they have lower priority)
+    application.add_handler(CommandHandler("start", start), group=1)
+    application.add_handler(CommandHandler("register", register), group=1)
+    application.add_handler(CommandHandler("help", help_command), group=1)
+    application.add_handler(CommandHandler("status", status), group=1)
+    application.add_handler(CommandHandler("language", language_command), group=1)
+    application.add_handler(CommandHandler("pause", pause_alerts), group=1)
+    application.add_handler(CommandHandler("resume", resume_alerts), group=1)
+    application.add_handler(CommandHandler("questionnaire", questionnaire_dds2), group=1)
+    application.add_handler(CommandHandler("export", export_data), group=1)
+    application.add_handler(CommandHandler("health", health_check), group=1)
+    application.add_handler(CommandHandler("send_now", send_alerts_now), group=1)
+    application.add_handler(CommandHandler("done", done_command), group=1)
+    
+    # Register callback query handlers
+    application.add_handler(CallbackQueryHandler(button_callback_dds2, pattern="^dds2_"), group=1)
+    application.add_handler(CallbackQueryHandler(language_callback, pattern="^set_language_"), group=1)
+    application.add_handler(CallbackQueryHandler(initial_language_callback, pattern="^initial_language_"), group=1)
     
     # Register error handler
     application.add_error_handler(error_handler)

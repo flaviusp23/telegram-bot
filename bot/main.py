@@ -291,7 +291,18 @@ def main() -> None:
                 CallbackQueryHandler(command_confirmation_callback, pattern="^(confirm_end_support|continue_support)$"),
                 CommandHandler("done", end_support),  # Handle /done to end conversation
                 CommandHandler("cancel", cancel_support),  # Handle /cancel
-                MessageHandler(filters.COMMAND, command_during_support),  # Catch ALL other commands first
+                # Explicitly handle all commands that might be used during chat
+                CommandHandler("start", command_during_support),
+                CommandHandler("register", command_during_support),
+                CommandHandler("help", command_during_support),
+                CommandHandler("status", command_during_support),
+                CommandHandler("language", command_during_support),
+                CommandHandler("pause", command_during_support),
+                CommandHandler("resume", command_during_support),
+                CommandHandler("questionnaire", command_during_support),
+                CommandHandler("export", command_during_support),
+                CommandHandler("health", command_during_support),
+                MessageHandler(filters.COMMAND, command_during_support),  # Catch any other commands
                 MessageHandler(filters.TEXT & ~filters.COMMAND, handle_support_message)  # Then handle text
             ]
         },
